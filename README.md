@@ -29,3 +29,28 @@ The `ncurses-toolkit/` folder you can install with `git clone https://github.com
 ```bash
 cd ncurses-toolkit
 make
+```
+
+### this is how the folder where gim should be built should be
+
+.
+├── a.out
+├── main.cpp
+├── makefile
+└── ncurses-toolkit
+    ├── demo
+    ├── include
+    │   ├── menu.hpp
+    │   └── message_box.hpp
+    ├── LICENSE
+    ├── Makefile
+    ├── menu_demo
+    ├── misc
+    │   ├── demo.cpp
+    │   ├── mbox_demo.cpp
+    │   └── menu_demo.cpp
+    ├── README.md
+    └── src
+        ├── menu.cpp
+        └── message_box.cpp
+
