@@ -1,0 +1,31 @@
+# GIM Text Editor
+
+**GIM Text Editor** is a terminal-based text editor built in C++ using the `ncurses` library and a custom `ncurses-toolkit` for UI components like menus and message boxes.
+
+## Prerequisites
+
+To build and run GIM, you need:
+
+1. **ncurses library** – provides terminal handling and UI capabilities.
+2. **ncurses-toolkit** – included in this repository under the `ncurses-toolkit/` folder.
+
+### Installing `ncurses`
+
+Depending on your system, install `ncurses` using your package manager:
+
+| Platform / Package Manager | Command |
+|----------------------------|---------|
+| Debian / Ubuntu            | `sudo apt-get install libncurses5-dev libncursesw5-dev` |
+| Fedora / Red Hat / CentOS  | `sudo dnf install ncurses-devel` |
+| Arch Linux / Manjaro       | `sudo pacman -S ncurses` |
+| macOS (Homebrew)           | `brew install ncurses` |
+| Windows (MSYS2 / MinGW)    | `pacman -S mingw-w64-x86_64-ncurses` |
+
+### Building ncurses-toolkit
+
+you must have 
+The `ncurses-toolkit/` folder you can install with `git clone https://github.com/ignabelitzky/ncurses-toolkit.git`. To build the toolkit demos:
+
+```bash
+cd ncurses-toolkit
+make
