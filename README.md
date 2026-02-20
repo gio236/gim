@@ -33,6 +33,7 @@ make
 
 ### this is how the folder where gim should be built should be
 
+```bash 
 .
 ├── a.out
 ├── main.cpp
@@ -54,3 +55,4 @@ make
         ├── menu.cpp
         └── message_box.cpp
 
+```
