@@ -46,9 +46,9 @@ void printfile(const vector<string> &righe){
 }
 
 void disableFlowControl(){
-  termios t;				// dichiara t per salvare la configurazione della flag 
-  tcgetattr(STDIN_FILENO, &t);	// ribaltata con ~ (not in c) ribalta i bit della flag
-  t.c_iflag &= ~(IXON);		// nella zona IXON che attiva l'input dei caratteri ctrl+s ecc..
+  termios t;                            // dichiara t per salvare la configurazione della flag
+  tcgetattr(STDIN_FILENO, &t);  // ribaltata con ~ (not in c) ribalta i bit della flag
+  t.c_iflag &= ~(IXON);         // nella zona IXON che attiva l'input dei caratteri ctrl+s ecc..
   tcsetattr(STDIN_FILENO, TCSANOW, &t); // e poi lo risalvo con settattribut immediatamente con tcs.
 }
 
@@ -65,6 +65,7 @@ int main(int argc, char *argv[]){
   int y ;
   int ch;
   bool filexist = false;
+  bool run = true;
 
   string Nomefile ; //dichiarazione del nome del file
 
@@ -84,24 +85,24 @@ int main(int argc, char *argv[]){
         string line;
         while(getline(file, line)){
           tmp++;
-          righe.push_back(line); 
+          righe.push_back(line);
         }
         file.close();
 
         filexist = true;
         if(tmp == 0)
-          righe.push_back("");  
+          righe.push_back("");
 
       }
     }else{
-      righe.push_back("");  
+      righe.push_back("");
     }
 
 
   }
 
-  initscr();	     //inizializzo ncurses
-  noecho();	     //disattivo i tasti mostrati a schermo 
+  initscr();         //inizializzo ncurses
+  noecho();          //disattivo i tasti mostrati a schermo
   keypad(stdscr, TRUE);//attivo tasti speciali
   cbreak();
   disableFlowControl();
@@ -113,7 +114,9 @@ int main(int argc, char *argv[]){
 
 
 
-  while((ch = getch()) != EXIT_KEY){//se ch diverso da ctrl+x lo faccio entrare altrimenti salta tutto e finisce il programma
+  // (ch = getch()) != EXIT_KEY
+  while(true){
+    ch = getch();
 
     // 212 rimpiazzare con termwidth // COLS
     if(x >= COLS - 1){
@@ -152,7 +155,7 @@ int main(int argc, char *argv[]){
         x++;
 
       move(y, x);
-    }else if(ch == SAVE_KEY){ 
+    }else if(ch == SAVE_KEY){
       ofstream file(Nomefile);
       if(file.is_open()){
         for(int i = 0; i < righe.size(); i++){
@@ -162,13 +165,13 @@ int main(int argc, char *argv[]){
 
         vector<string> items = {"OK", "EXIT"};
         string sel = printmenu("writing went well", items); // return the selection of the user
-        resetglobalsrc();
 
         if(sel == "EXIT"){
           endwin();
           return 0;
         }
 
+        resetglobalsrc();
       }else{
 
         vector<string> items = {"OK", "EXIT"};
@@ -187,22 +190,22 @@ int main(int argc, char *argv[]){
     }else if(ch == '\n'){
       y++;
       if(y < righe.size()){
-        x = righe[y].length();	
+        x = righe[y].length();
       }else{
-        righe.push_back("");	
+        righe.push_back("");
         x = 0;
-      }				
+      }
       move (y,x);
       refresh();
     }else if(ch == KEY_BACKSPACE){ //controllo se ch è backspace e tolgo un carattere
       if(x > 0){
         x--;
-        //	righe[y].pop_back();
+        //      righe[y].pop_back();
         if (y >= 0 && y < righe.size() && x >= 0 && x < righe[y].size()) {
-          righe[y].erase(righe[y].begin() + x);                                             
+          righe[y].erase(righe[y].begin() + x);
         }
 
-        move(y, 0);  
+        move(y, 0);
         clrtoeol(); // cancella tutta la riga in cui ti trovi
         mvprintw(y, 0, "%s", righe[y].c_str());
         move(y, x);
@@ -220,8 +223,22 @@ int main(int argc, char *argv[]){
       mvprintw(y, 0, "%s", righe[y].c_str());
       move (y, x);
       x++;
+    }else if(ch == EXIT_KEY){
+      vector<string> items = {"YES", "NO"};
+      string selection = printmenu("EXIT",items);
+
+      if(selection == "YES"){
+        endwin();
+        return 0;
+      }
+
+      resetglobalsrc();
     }
+
+    timeout(100);
+
   }
+
 
   endwin();
 
