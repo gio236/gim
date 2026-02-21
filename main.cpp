@@ -20,6 +20,11 @@ using namespace std;
 // implementare canc
 // implementare scrolling sia verticale che orizzontale
 
+void ref(int y ,int x){
+  move(y, x);
+  refresh();
+}
+
 void resetglobalsrc(){
   curs_set(1);          // ripristina visibilità
   touchwin(stdscr);     // forza redraw
@@ -61,13 +66,13 @@ int main(int argc, char *argv[]){
 
   vector<string> righe;
 
-  int x ;
-  int y ;
+  int x;
+  int y;
   int ch;
   bool filexist = false;
   bool run = true;
 
-  string Nomefile ; //dichiarazione del nome del file
+  string Nomefile;
 
   x = 0;
   y = 0;
@@ -108,6 +113,7 @@ int main(int argc, char *argv[]){
   disableFlowControl();
   nodelay(stdscr, TRUE); //non bloccare il programma in attesa di input
 
+
   if(filexist){
     printfile(righe);
   }
@@ -118,13 +124,8 @@ int main(int argc, char *argv[]){
   while(true){
     ch = getch();
 
-    // 212 rimpiazzare con termwidth // COLS
     if(x >= COLS - 1){
-      x = 0;
-      y++;
-      righe.push_back(""); //aggiungo una riga vuota
-      move(y,x);
-      refresh();
+      ref(y, x);
     }
 
     if(ch == KEY_UP){
@@ -132,29 +133,28 @@ int main(int argc, char *argv[]){
         y--;
         if(y < righe.size()){
           x = righe[y].length();
-        }move(y, x);
+        }
+        ref(y, x);
       }
     }else if(ch == KEY_DOWN){
       if(y + 1 < righe.size()){
         y++;
         x = righe[y].length();
-        move(y,x);
-        refresh();
+        ref(y, x);
       }
     }else if(ch == KEY_LEFT){
       if(x > 0){
         x--;
-        move(y, x);
       }else if (x == 0 && y > 0){
         y--;
         x = righe[y].length();
-        move(y, x);
       }
+      ref(y, x);
     }else if(ch == KEY_RIGHT){
       if(x < COLS - 1 && x < righe[y].length())
         x++;
 
-      move(y, x);
+      ref(y, x);
     }else if(ch == SAVE_KEY){
       ofstream file(Nomefile);
       if(file.is_open()){
@@ -184,37 +184,38 @@ int main(int argc, char *argv[]){
         }
 
         x = 0;
-        refresh();
+        ref(y, x);
       }
-      refresh();
-    }else if(ch == '\n'){
+    }else if(ch == '\n'){ //enter
       y++;
-      if(y < righe.size()){
-        x = righe[y].length();
-      }else{
-        righe.push_back("");
-        x = 0;
+      righe.push_back("");
+      for(int i = righe.size() - 1; i >= y; i--){
+        righe[i] = righe[i - 1];
       }
-      move (y,x);
-      refresh();
+      righe[y] = "";
+      x = 0;
+      clear();
+      printfile(righe);
+      ref(y, x);
     }else if(ch == KEY_BACKSPACE){ //controllo se ch è backspace e tolgo un carattere
       if(x > 0){
         x--;
-        //      righe[y].pop_back();
         if (y >= 0 && y < righe.size() && x >= 0 && x < righe[y].size()) {
           righe[y].erase(righe[y].begin() + x);
         }
-
         move(y, 0);
         clrtoeol(); // cancella tutta la riga in cui ti trovi
         mvprintw(y, 0, "%s", righe[y].c_str());
-        move(y, x);
-        refresh();
+        ref(y, x);
       }else if (x == 0 && y > 0){
+        if (righe[y].empty()) {
+          righe.erase(righe.begin() + y);
+          clear();
+          printfile(righe);
+        } 
         y--;
         x = righe[y].length();
-        move(y, x);
-        refresh();
+        ref(y, x);
       }
     }else if(isprint(ch)){
       righe[y].insert(x, 1, (char)ch);
@@ -244,3 +245,4 @@ int main(int argc, char *argv[]){
 
   return 0;
 }
+
