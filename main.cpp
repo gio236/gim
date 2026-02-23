@@ -136,18 +136,18 @@ int main(int argc, char *argv[]){
       if(y - 1 >= 0){
         y--;
 
-        if(y > LINES - 1){
+        if(y > 0)
           clear();
+
+        if(y > LINES - 1){
           printfile(-((LINES - 1) - y) , righe);
         }else if(y > 0){
-          clear();
           printfile(0, righe);
         }
 
         if(y < righe.size()){
           x = righe[y].length();
         }
- 
 
         ref(y, x);
       }
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]){
     }else if(ch == '\n'){ //enter
       y++;
       righe.push_back("");
-      for(int i = righe.size() - 1; i >= y; i--){
+      for(int i = righe.size() - 1; i > y; i--){
         righe[i] = righe[i - 1];
       }
       righe[y] = "";
@@ -231,6 +231,7 @@ int main(int argc, char *argv[]){
           righe[y].erase(righe[y].begin() + x);
         }
         move(y, 0);
+
         if(y > LINES - 1){
           clear();
           printfile(-((LINES - 1) - y), righe);
@@ -243,7 +244,11 @@ int main(int argc, char *argv[]){
         if (righe[y].empty()) {
           righe.erase(righe.begin() + y);
           clear();
-          printfile(0, righe);
+          if(y > LINES - 1){
+            printfile(-((LINES - 1) - y) - 1, righe);
+          }else{
+            printfile(0, righe);
+          }
         } 
         y--;
         x = righe[y].length();
@@ -251,14 +256,16 @@ int main(int argc, char *argv[]){
       }
     }else if(isprint(ch)){
       righe[y].insert(x, 1, (char)ch);
+      move(y, 0);
+      clrtoeol();
+
       if(y > LINES - 1){
-        clear();
-        printfile(-((LINES - 1) - y) , righe);
+        mvprintw(LINES - 1, 0, "%s", righe[y].c_str()); 
+        //editor prevede sempre cursore alla fine del terminale
       }else{
-        move(y, 0);
-        clrtoeol();
         mvprintw(y, 0, "%s", righe[y].c_str());
       }
+      
       x++;
       ref(y, x);
     }else if(ch == EXIT_KEY){
