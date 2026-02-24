@@ -31,6 +31,7 @@ for installing :
 ```bash
 git clone https://github.com/ignabelitzky/ncurses-toolkit.git
 make
+chmod +x installer.sh
 sudo ./installer.sh
 ```
 
