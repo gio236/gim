@@ -141,6 +141,8 @@ int main(int argc, char *argv[]){
 
         if(y < righe.size()){
           x = righe[y].length();
+          if(x > COLS - 1)
+            x = 0;
         }
 
         if(my == 0){
@@ -157,6 +159,8 @@ int main(int argc, char *argv[]){
         y++;
 
         x = righe[y].length();
+        if(x > COLS - 1)
+          x = 0;
 
         if(my == LINES - 1){
           if(y > LINES - 1){
@@ -182,7 +186,7 @@ int main(int argc, char *argv[]){
       else
         ref(y, x);
     }else if(ch == KEY_RIGHT){
-      if(x + 1 < righe[y].length() && x < COLS - 1){
+      if(x + 1 < righe[y].length()){
         x++;
         ref(y, x);
       }
