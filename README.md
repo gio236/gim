@@ -26,13 +26,13 @@ Depending on your system, install `ncurses` using your package manager:
 you must have 
 The `ncurses-toolkit/` folder you can install with `git clone https://github.com/ignabelitzky/ncurses-toolkit.git`. 
 
-for installing : 
+compile it with : 
 
 ```bash
 make 
 ```
 
-for execute you can do : 
+for execute  : 
 
 ```bash
 ./a.out 
