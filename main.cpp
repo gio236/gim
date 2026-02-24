@@ -46,8 +46,15 @@ string printmenu(string title, vector<string> &items){
 void printfile(int start, const vector<string> &righe){
   int dif = 0;
   for(int i = start; i < righe.size(); i++){
-    mvprintw(dif, 0, "%s", righe[i].c_str());
-    dif++;
+    if(righe[i].length() > COLS - 1){
+      for(int j = 0; j < righe[i].length(); j++){
+        mvprintw(dif, j, "%c", righe[i][j]);
+      }
+      dif++;
+    }else{
+      mvprintw(dif, 0, "%s", righe[i].c_str());
+      dif++;
+    }
   }
   refresh();
 }
@@ -181,10 +188,27 @@ int main(int argc, char *argv[]){
         my--;
         x = righe[y].length();
       }
+
+      if(x > COLS - 1){
+        if(y > LINES - 1){
+          move(my, 0);
+          clrtoeol(); // cancella tutta la riga in cui ti trovi
+          mvprintw(my, 0, "%s", righe[y].c_str());
+          ref(my, x);
+        }else{
+          move(y, 0);
+          clrtoeol(); // cancella tutta la riga in cui ti trovi
+          mvprintw(y, 0, "%s", righe[y].c_str());
+          ref(y, x);
+        }
+      }
+
+
       if(y > LINES - 1)
         ref(my, x);
       else
         ref(y, x);
+
     }else if(ch == KEY_RIGHT){
       if(x + 1 < righe[y].length()){
         x++;
@@ -288,7 +312,6 @@ int main(int argc, char *argv[]){
 
       if(y > LINES - 1){
         mvprintw(my, 0, "%s", righe[y].c_str()); 
-        //editor prevede sempre cursore alla fine del terminale
       }else{
         mvprintw(y, 0, "%s", righe[y].c_str());
       }
