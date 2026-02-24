@@ -121,12 +121,15 @@ int main(int argc, char *argv[]){
   }
 
 
+  int my, mx;
 
   // mvprintw(LINES -1 , COLS - 20, "%d",LINES - 1);// debug
   // (ch = getch()) != EXIT_KEY
   while(true){
-    // mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
     ch = getch();
+    getyx(stdscr, my, mx);
+    // mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
+    // mvprintw(1 , COLS - 20, "my ==> %d",my );// debug
 
     if(x >= COLS - 1){
       ref(y, x);
@@ -136,47 +139,63 @@ int main(int argc, char *argv[]){
       if(y - 1 >= 0){
         y--;
 
-        if(y > 0)
-          clear();
-
-        if(y > LINES - 1){
-          printfile(-((LINES - 1) - y) , righe);
-        }else if(y > 0){
-          printfile(0, righe);
-        }
-
         if(y < righe.size()){
           x = righe[y].length();
         }
 
-        ref(y, x);
+        if(my == 0){
+          if(y > LINES - 1){
+            clear();
+            printfile(-((LINES - 1) - y), righe);
+          }else if(y != 0){
+            printfile(0, righe);
+          }
+          ref(y, x);
+        }else{
+          ref(my - 1, x);
+        }
+
       }
     }else if(ch == KEY_DOWN){
       if(y + 1 < righe.size()){
         y++;
 
-        if(y > LINES - 1){
-          //voglio scorrere il file
-          clear();
-          printfile(-((LINES - 1) - y), righe);
-        }       
         x = righe[y].length();
-        ref(y, x);
+
+        if(my == LINES - 1){
+          if(y > LINES - 1){
+            clear();
+            printfile(y - my, righe);
+          }          
+          ref(y, x);
+        }else{
+          ref(my + 1, x);
+        }
+
       }
     }else if(ch == KEY_LEFT){
       if(x > 0){
         x--;
       }else if(x == 0 && y > 0){
         y--;
+        my--;
         x = righe[y].length();
       }
-      ref(y, x);
+      if(y > LINES - 1)
+        ref(my, x);
+      else
+        ref(y, x);
     }else if(ch == KEY_RIGHT){
-      if(x + 1 < righe[y].length()){
-        if(x < COLS - 1 && x < righe[y].length())
-          x++;
+      if(x + 1 < righe[y].length() && x < COLS - 1){
+        x++;
         ref(y, x);
       }
+
+      if(y > LINES - 1)
+        ref(my, x);
+      else
+        ref(y, x);
+
     }else if(ch == SAVE_KEY){
       ofstream file(Nomefile);
       if(file.is_open()){
@@ -219,40 +238,48 @@ int main(int argc, char *argv[]){
       clear();
       if(y > LINES - 1){
         //voglio scorrere il file
-        printfile(-((LINES - 1) - y),righe);
+        // printfile(-((LINES - 1) - y),righe);
+        printfile(y - my, righe);
+        ref(my, x);
       }else{
         printfile(0, righe);
+        ref(y, x);
       }
-      ref(y, x);
     }else if(ch == KEY_BACKSPACE){ //controllo se ch è backspace e tolgo un carattere
       if(x > 0){
         x--;
         if (y >= 0 && y < righe.size() && x >= 0 && x < righe[y].size()) {
           righe[y].erase(righe[y].begin() + x);
         }
-        move(y, 0);
 
         if(y > LINES - 1){
-          clear();
-          printfile(-((LINES - 1) - y), righe);
+          move(my, 0);
+          clrtoeol(); // cancella tutta la riga in cui ti trovi
+          mvprintw(my, 0, "%s", righe[y].c_str());
+          ref(my, x);
         }else{
+          move(y, 0);
           clrtoeol(); // cancella tutta la riga in cui ti trovi
           mvprintw(y, 0, "%s", righe[y].c_str());
+          ref(y, x);
         }
-        ref(y, x);
+
       }else if (x == 0 && y > 0){
+
         if (righe[y].empty()) {
+          x = righe[y - 1].length();
           righe.erase(righe.begin() + y);
           clear();
           if(y > LINES - 1){
-            printfile(-((LINES - 1) - y) - 1, righe);
+            printfile(y - my, righe);
+            ref(my - 1, x);
           }else{
             printfile(0, righe);
+            ref(y - 1, x);
           }
         } 
+
         y--;
-        x = righe[y].length();
-        ref(y, x);
       }
     }else if(isprint(ch)){
       righe[y].insert(x, 1, (char)ch);
@@ -260,14 +287,17 @@ int main(int argc, char *argv[]){
       clrtoeol();
 
       if(y > LINES - 1){
-        mvprintw(LINES - 1, 0, "%s", righe[y].c_str()); 
+        mvprintw(my, 0, "%s", righe[y].c_str()); 
         //editor prevede sempre cursore alla fine del terminale
       }else{
         mvprintw(y, 0, "%s", righe[y].c_str());
       }
       
       x++;
-      ref(y, x);
+      if(y > LINES - 1)
+        ref(my, x);
+      else
+        ref(y, x);
     }else if(ch == EXIT_KEY){
       vector<string> items = {"YES", "NO"};
       string selection = printmenu("EXIT",items);
