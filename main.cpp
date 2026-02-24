@@ -144,13 +144,9 @@ int main(int argc, char *argv[]){
         }
 
         if(my == 0){
-          if(y > LINES - 1){
-            clear();
-            printfile(-((LINES - 1) - y), righe);
-          }else if(y != 0){
-            printfile(0, righe);
-          }
-          ref(y, x);
+          clear();
+          printfile(y, righe);
+          ref(my, x);
         }else{
           ref(my - 1, x);
         }
