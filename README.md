@@ -21,14 +21,21 @@ Depending on your system, install `ncurses` using your package manager:
 | macOS (Homebrew)           | `brew install ncurses` |
 | Windows (MSYS2 / MinGW)    | `pacman -S mingw-w64-x86_64-ncurses` |
 
-### Building ncurses-toolkit
+### Building gim
 
 you must have 
-The `ncurses-toolkit/` folder you can install with `git clone https://github.com/ignabelitzky/ncurses-toolkit.git`. To build the toolkit demos:
+The `ncurses-toolkit/` folder you can install with `git clone https://github.com/ignabelitzky/ncurses-toolkit.git`. 
+
+for installing : 
 
 ```bash
-cd ncurses-toolkit
-make
+make 
+```
+
+for execute you can do : 
+
+```bash
+./a.out 
 ```
 
 ### this is how the folder where gim should be built should be
