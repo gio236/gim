@@ -26,16 +26,16 @@ Depending on your system, install `ncurses` using your package manager:
 you must have 
 The `ncurses-toolkit/` folder you can install with `git clone https://github.com/ignabelitzky/ncurses-toolkit.git`. 
 
-compile it with : 
+for installing : 
 
 ```bash
-make 
+./installer.sh 
 ```
 
-for execute  : 
+then you can use it :
 
 ```bash
-./a.out 
+gim filethatyouwantopen 
 ```
 
 ### this is how the folder where gim should be built should be
