@@ -15,12 +15,18 @@
 using namespace std;
 
 #define EXIT_KEY 24 // ctrl+x = 24
-#define TAB 4 
+#define TAB 2 
 #define SAVE_KEY 23 // ctrl+w = 23 , ctrl+o = 15
 
 // implementare canc
 // implementare scrolling sia verticale che orizzontale
 // implementare 
+
+void reprintrow(int y, int my, vector<string> righe){
+      move(my, 0);
+      clrtoeol();
+      mvprintw(my, 0, "%s",righe[y].c_str());
+}
 
 void ref(int y ,int x){
   move(y, x);
@@ -48,7 +54,7 @@ string printmenu(string title, vector<string> &items){
 void printfile(int start, const vector<string> &righe){
   int dif = 0;
   for(int i = start; i < righe.size(); i++){
-    if(righe[i].length() > COLS - 1){
+    if(righe[i].length() > COLS - 1  ){
       for(int j = 0; j < righe[i].length(); j++){
         mvprintw(dif, j, "%c", righe[i][j]);
       }
@@ -141,10 +147,6 @@ int main(int argc, char *argv[]){
     // mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
     // mvprintw(1 , COLS - 20, "my ==> %d",my );// debug
 
-    if(x >= COLS - 1){
-      ref(y, x);
-    }
-
     if(ch == KEY_UP){
       if(y - 1 >= 0){
         y--;
@@ -177,7 +179,7 @@ int main(int argc, char *argv[]){
             clear();
             printfile(y - my, righe);
           }          
-          ref(y, x);
+          ref(my, x);
         }else{
           ref(my + 1, x);
         }
@@ -192,36 +194,18 @@ int main(int argc, char *argv[]){
         x = righe[y].length();
       }
 
-      if(x > COLS - 1){
-        if(y > LINES - 1){
-          move(my, 0);
-          clrtoeol(); // cancella tutta la riga in cui ti trovi
-          mvprintw(my, 0, "%s", righe[y].c_str());
-          ref(my, x);
-        }else{
-          move(y, 0);
-          clrtoeol(); // cancella tutta la riga in cui ti trovi
-          mvprintw(y, 0, "%s", righe[y].c_str());
-          ref(y, x);
-        }
-      }
-
-
-      if(y > LINES - 1)
+      // if(y > LINES - 1)
         ref(my, x);
-      else
-        ref(y, x);
+      // else
+      //   ref(y, x);
 
     }else if(ch == KEY_RIGHT){
       if(x + 1 < righe[y].length()){
         x++;
-        ref(y, x);
+        ref(my, x);
       }
 
-      if(y > LINES - 1)
-        ref(my, x);
-      else
-        ref(y, x);
+      ref(my, x);
 
     }else if(ch == SAVE_KEY){
       ofstream file(Nomefile);
@@ -252,10 +236,11 @@ int main(int argc, char *argv[]){
         }
 
         x = 0;
-        ref(y, x);
+        ref(my, x);
       }
     }else if(ch == '\n'){ //enter
       y++;
+      my++;
       righe.push_back("");
       for(int i = righe.size() - 1; i > y; i--){
         righe[i] = righe[i - 1];
@@ -263,33 +248,18 @@ int main(int argc, char *argv[]){
       righe[y] = "";
       x = 0;
       clear();
-      if(y > LINES - 1){
-        //voglio scorrere il file
-        // printfile(-((LINES - 1) - y),righe);
-        printfile(y - my, righe);
-        ref(my, x);
-      }else{
-        printfile(0, righe);
-        ref(y, x);
-      }
-    }else if(ch == KEY_BACKSPACE){ //controllo se ch è backspace e tolgo un carattere
+      printfile(y - my, righe);
+      ref(my, x);
+
+    }else if(ch == KEY_BACKSPACE){ 
       if(x > 0){
         x--;
         if (y >= 0 && y < righe.size() && x >= 0 && x < righe[y].size()) {
           righe[y].erase(righe[y].begin() + x);
         }
 
-        if(y > LINES - 1){
-          move(my, 0);
-          clrtoeol(); // cancella tutta la riga in cui ti trovi
-          mvprintw(my, 0, "%s", righe[y].c_str());
-          ref(my, x);
-        }else{
-          move(y, 0);
-          clrtoeol(); // cancella tutta la riga in cui ti trovi
-          mvprintw(y, 0, "%s", righe[y].c_str());
-          ref(y, x);
-        }
+        reprintrow(y, my, righe);
+        ref(my, x);
 
       }else if (x == 0 && y > 0){
 
@@ -297,33 +267,19 @@ int main(int argc, char *argv[]){
           x = righe[y - 1].length();
           righe.erase(righe.begin() + y);
           clear();
-          if(y > LINES - 1){
-            printfile(y - my, righe);
-            ref(my - 1, x);
-          }else{
-            printfile(0, righe);
-            ref(y - 1, x);
-          }
+          printfile(y - my, righe);
+          ref(my - 1, x);
         } 
 
         y--;
       }
     }else if(isprint(ch)){
-      righe[y].insert(x, 1, (char)ch);
-      move(y, 0);
-      clrtoeol();
 
-      if(y > LINES - 1){
-        mvprintw(my, 0, "%s", righe[y].c_str()); 
-      }else{
-        mvprintw(y, 0, "%s", righe[y].c_str());
-      }
-      
+      righe[y].insert(x, 1, (char)ch);
+      reprintrow(y, my, righe);
       x++;
-      if(y > LINES - 1)
-        ref(my, x);
-      else
-        ref(y, x);
+      ref(my, x);
+
     }else if(ch == EXIT_KEY){
       vector<string> items = {"YES", "NO"};
       string selection = printmenu("EXIT",items);
@@ -336,11 +292,9 @@ int main(int argc, char *argv[]){
       resetglobalsrc();
     }else if(ch == 9){ // tab
       righe[y].insert(x, TAB, ' ');
-      move(my, 0);
-      clrtoeol();
-      mvprintw(y, 0, "%s",righe[y].c_str());
+      reprintrow(y, my, righe);
       x += TAB;
-      ref(y, x);
+      ref(my, x);
     }
 
     timeout(100);
