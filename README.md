@@ -23,9 +23,6 @@ Depending on your system, install `ncurses` using your package manager:
 
 ### Building gim
 
-you must have 
-The `ncurses-toolkit/` folder you can install with `git clone https://github.com/ignabelitzky/ncurses-toolkit.git`. 
-
 for installing : 
 
 ```bash
