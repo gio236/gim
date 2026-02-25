@@ -14,6 +14,7 @@
 
 using namespace std;
 
+
 #define EXIT_KEY 24 // ctrl+x = 24
 #define TAB 2 
 #define SAVE_KEY 23 // ctrl+w = 23 , ctrl+o = 15
@@ -22,10 +23,20 @@ using namespace std;
 // implementare scrolling sia verticale che orizzontale
 // implementare 
 
+void scrollrow(int my, int y, int x, vector<string> righe){
+  move(my, 0);
+  clrtoeol();
+  int temp = 0;
+  for(int i = x; i < righe[y].length() && temp < COLS - 1; i++){
+    mvprintw(my, temp, "%c", righe[y][i]);
+    temp++;
+  }
+}
+
 void reprintrow(int y, int my, vector<string> righe){
-      move(my, 0);
-      clrtoeol();
-      mvprintw(my, 0, "%s",righe[y].c_str());
+  move(my, 0);
+  clrtoeol();
+  mvprintw(my, 0, "%s",righe[y].c_str());
 }
 
 void ref(int y ,int x){
@@ -89,6 +100,8 @@ int main(int argc, char *argv[]){
   bool filexist = false;
   bool run = true;
 
+  int my, mx;
+
   string Nomefile;
 
   x = 0;
@@ -136,7 +149,6 @@ int main(int argc, char *argv[]){
   }
 
 
-  int my, mx;
   ref(y, x);
 
   // mvprintw(LINES -1 , COLS - 20, "%d",LINES - 1);// debug
@@ -144,8 +156,11 @@ int main(int argc, char *argv[]){
   while(true){
     ch = getch();
     getyx(stdscr, my, mx);
-    // mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
+    mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
     // mvprintw(1 , COLS - 20, "my ==> %d",my );// debug
+    // mvprintw(2, COLS - 20, "%d",COLS );// debug
+    // mvprintw(3, COLS - 20, "%d",COLS - 1 );// debug
+    ref(my, mx);
 
     if(ch == KEY_UP){
       if(y - 1 >= 0){
@@ -153,16 +168,19 @@ int main(int argc, char *argv[]){
 
         if(y < righe.size()){
           x = righe[y].length();
-          if(x > COLS - 1)
+          if(x > COLS - 1){
             x = 0;
+          }
         }
+
+        mx = x;
 
         if(my == 0){
           clear();
           printfile(y, righe);
-          ref(my, x);
+          ref(my, mx);
         }else{
-          ref(my - 1, x);
+          ref(my - 1, mx);
         }
 
       }
@@ -171,15 +189,18 @@ int main(int argc, char *argv[]){
         y++;
 
         x = righe[y].length();
-        if(x > COLS - 1)
+        if(x > COLS - 1){
           x = 0;
+        }
+
+        mx = x;
 
         if(my == LINES - 1){
           if(y > LINES - 1){
             clear();
             printfile(y - my, righe);
           }          
-          ref(my, x);
+          ref(my, mx);
         }else{
           ref(my + 1, x);
         }
@@ -188,25 +209,38 @@ int main(int argc, char *argv[]){
     }else if(ch == KEY_LEFT){
       if(x > 0){
         x--;
+        mx--;
+
+        if(righe[y].length() > COLS - 1 && mx == 0 && x >= COLS - 1){
+          scrollrow(my, y, (x) - (COLS - 1), righe);
+          mx = COLS - 1;
+        }
+
       }else if(x == 0 && y > 0){
         y--;
         my--;
         x = righe[y].length();
+
+        if(righe[y].length() > COLS - 1 && mx == 0 && x >= COLS - 1){
+          scrollrow(my, y,((x/(COLS - 1)) * (COLS - 1)), righe);
+          mx = ( x - ((x/(COLS - 1)) * (COLS - 1)));
+        }
+
       }
 
-      // if(y > LINES - 1)
-        ref(my, x);
-      // else
-      //   ref(y, x);
+      ref(my, mx);
 
     }else if(ch == KEY_RIGHT){
       if(x + 1 < righe[y].length()){
         x++;
-        ref(my, x);
+        mx++;
+        if(righe[y].length() > COLS - 1 && mx == COLS - 1){
+          scrollrow(my, y, x, righe);
+          mx = 0;
+        }
+
+        ref(my, mx);
       }
-
-      ref(my, x);
-
     }else if(ch == SAVE_KEY){
       ofstream file(Nomefile);
       if(file.is_open()){
@@ -236,7 +270,8 @@ int main(int argc, char *argv[]){
         }
 
         x = 0;
-        ref(my, x);
+        mx = 0;
+        ref(my, mx);
       }
     }else if(ch == '\n'){ //enter
       y++;
@@ -247,38 +282,52 @@ int main(int argc, char *argv[]){
       }
       righe[y] = "";
       x = 0;
+      mx = 0;
       clear();
       printfile(y - my, righe);
-      ref(my, x);
+      ref(my, mx);
 
     }else if(ch == KEY_BACKSPACE){ 
       if(x > 0){
         x--;
-        if (y >= 0 && y < righe.size() && x >= 0 && x < righe[y].size()) {
+        if(y >= 0 && y < righe.size() && x >= 0 && x < righe[y].size()) {
           righe[y].erase(righe[y].begin() + x);
         }
 
-        reprintrow(y, my, righe);
-        ref(my, x);
+        if(x > COLS - 1 || righe[y].length() > COLS - 1){
+          if(righe[y].length() > COLS - 1 && x < COLS - 1){
+            mx = x;
+            scrollrow(my, y, 0, righe);
+          }else{
+            scrollrow(my, y, x - mx, righe);
+          }
+        }else{
+          mx = x;
+          reprintrow(y, my, righe);
+        }
+        ref(my, mx);
 
       }else if (x == 0 && y > 0){
-
         if (righe[y].empty()) {
           x = righe[y - 1].length();
           righe.erase(righe.begin() + y);
           clear();
           printfile(y - my, righe);
           ref(my - 1, x);
+          y--;
         } 
-
-        y--;
       }
     }else if(isprint(ch)){
 
       righe[y].insert(x, 1, (char)ch);
-      reprintrow(y, my, righe);
+      if(x > COLS - 1 || righe[y].length() > COLS - 1){
+        scrollrow(my, y, x - mx, righe);
+      }else{
+        reprintrow(y, my, righe);
+      }
       x++;
-      ref(my, x);
+      mx++;
+      ref(my, mx);
 
     }else if(ch == EXIT_KEY){
       vector<string> items = {"YES", "NO"};
@@ -293,8 +342,9 @@ int main(int argc, char *argv[]){
     }else if(ch == 9){ // tab
       righe[y].insert(x, TAB, ' ');
       reprintrow(y, my, righe);
+      mx += TAB;
       x += TAB;
-      ref(my, x);
+      ref(my, mx);
     }
 
     timeout(100);
