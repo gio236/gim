@@ -6,8 +6,8 @@
 
 To build and run GIM, you need:
 
-1. **ncurses library** – provides terminal handling and UI capabilities.
-2. **ncurses-toolkit** – included in this repository under the `ncurses-toolkit/` folder.
+1. **ncurses library** – provides terminal handling and UI capabilities. 
+2. **ncurses-toolkit** – this will be installed with the script.
 
 ### Installing `ncurses`
 
