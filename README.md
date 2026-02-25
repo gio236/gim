@@ -40,23 +40,25 @@ gim filethatyouwantopen
 ```bash 
 .
 ├── a.out
+├── installer.sh
+├── LICENSE
 ├── main.cpp
 ├── makefile
-└── ncurses-toolkit
-    ├── demo
-    ├── include
-    │   ├── menu.hpp
-    │   └── message_box.hpp
-    ├── LICENSE
-    ├── Makefile
-    ├── menu_demo
-    ├── misc
-    │   ├── demo.cpp
-    │   ├── mbox_demo.cpp
-    │   └── menu_demo.cpp
-    ├── README.md
-    └── src
-        ├── menu.cpp
-        └── message_box.cpp
+├── ncurses-toolkit
+│   ├── include
+│   │   ├── menu.hpp
+│   │   └── message_box.hpp
+│   ├── LICENSE
+│   ├── Makefile
+│   ├── misc
+│   │   ├── demo.cpp
+│   │   ├── mbox_demo.cpp
+│   │   └── menu_demo.cpp
+│   ├── README.md
+│   └── src
+│       ├── menu.cpp
+│       └── message_box.cpp
+└── README.md
+
 
 ```
