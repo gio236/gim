@@ -15,7 +15,7 @@
 using namespace std;
 
 #define EXIT_KEY 24 // ctrl+x = 24
-#define TAB 4 // ctrl+x = 24
+#define TAB 4 
 #define SAVE_KEY 23 // ctrl+w = 23 , ctrl+o = 15
 
 // implementare canc
