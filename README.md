@@ -29,10 +29,7 @@ The `ncurses-toolkit/` folder you can install with `git clone https://github.com
 for installing : 
 
 ```bash
-git clone https://github.com/ignabelitzky/ncurses-toolkit.git
-make
-chmod +x installer.sh
-sudo ./installer.sh
+bash installer.sh
 ```
 
 then you can use it :
