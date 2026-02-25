@@ -15,10 +15,12 @@
 using namespace std;
 
 #define EXIT_KEY 24 // ctrl+x = 24
+#define TAB 4 // ctrl+x = 24
 #define SAVE_KEY 23 // ctrl+w = 23 , ctrl+o = 15
 
 // implementare canc
 // implementare scrolling sia verticale che orizzontale
+// implementare 
 
 void ref(int y ,int x){
   move(y, x);
@@ -129,6 +131,7 @@ int main(int argc, char *argv[]){
 
 
   int my, mx;
+  ref(y, x);
 
   // mvprintw(LINES -1 , COLS - 20, "%d",LINES - 1);// debug
   // (ch = getch()) != EXIT_KEY
@@ -331,6 +334,13 @@ int main(int argc, char *argv[]){
       }
 
       resetglobalsrc();
+    }else if(ch == 9){ // tab
+      righe[y].insert(x, TAB, ' ');
+      move(my, 0);
+      clrtoeol();
+      mvprintw(y, 0, "%s",righe[y].c_str());
+      x += TAB;
+      ref(y, x);
     }
 
     timeout(100);
