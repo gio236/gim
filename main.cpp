@@ -193,13 +193,13 @@ int main(int argc, char *argv[]){
   while(true){
     ch = getch();
     getyx(stdscr, my, mx);
-    mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
-    mvprintw(1 , COLS - 20, "mx ==> %d",mx );// debug
+    //mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
+    //mvprintw(1 , COLS - 20, "mx ==> %d",mx );// debug
     // mvprintw(1 , COLS - 20, "my ==> %d",my );// debug
     // mvprintw(2, COLS - 20, "%d",COLS );// debug
     // mvprintw(4, COLS - 20, "%d",COLS - 1 );// debug
 
-    ref(my, mx); // debug
+    //ref(my, mx); // debug
 
     if(ch == KEY_CTRL_RIGHT){
       mx += (mvtonxtsp(y, my, x, mx, righe) - x);
