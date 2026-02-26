@@ -14,14 +14,12 @@
 
 using namespace std;
 
-
+#define KEY_CTRL_LEFT  1001
+#define KEY_CTRL_RIGHT 1002
 #define EXIT_KEY 24 // ctrl+x = 24
 #define TAB 2 
 #define SAVE_KEY 23 // ctrl+w = 23 , ctrl+o = 15
 
-// implementare canc
-// implementare scrolling sia verticale che orizzontale
-// implementare 
 
 void scrollrow(int my, int y, int x, vector<string> righe){
   move(my, 0);
@@ -32,6 +30,42 @@ void scrollrow(int my, int y, int x, vector<string> righe){
     temp++;
   }
 }
+
+int mvtonxtsp(int y, int my, int x, int mx, vector<string> righe){
+  int i;
+
+  if(x >= righe[y].length())
+    return x;
+
+  for(i = x + 1; i + 1 < righe[y].length() && righe[y][i] != ' '; i++){
+  }
+
+  // mvprintw(3, COLS - 20, "calcolo ==> %d", ((x + ((i - (x + 1)) + 2)) - mx + (COLS - 1)));
+  // mvprintw(3, COLS - 30, "i ==> %d, calcolo ==> %d", i, ((x + ((i - (x + 1)) + 2)) - mx + (COLS - 1)));
+
+  if(i > ((x + ((i - (x + 1)) + 2)) - mx + (COLS - 1))){
+    return x;
+  }else{
+     return i + 1;
+  }
+}
+
+int mvtoprvsp(int y, int my, int x, int &mx, vector<string> righe){
+  int i;
+
+  for(i = x - 1; i - 1 >= 0 && righe[y][i] != ' '; i--){
+  }
+
+  // mvprintw(3, COLS - 20, "calcolo ==> %d", ((x + ((i - (x - 1))) - 1)  - mx));
+
+  if(i < ((x + ((i - (x - 1)) - 1))  - mx) || i < 0){
+    return x;
+  }else{
+    return i;
+  }
+
+}
+
 
 void reprintrow(int y, int my, vector<string> righe){
   move(my, 0);
@@ -64,7 +98,7 @@ string printmenu(string title, vector<string> &items){
 
 void printfile(int start, const vector<string> &righe){
   int dif = 0;
-  for(int i = start; i < righe.size(); i++){
+  for(int i = start; i < righe.size() && dif < LINES; i++){
     if(righe[i].length() > COLS - 1  ){
       for(int j = 0; j < righe[i].length(); j++){
         mvprintw(dif, j, "%c", righe[i][j]);
@@ -144,6 +178,9 @@ int main(int argc, char *argv[]){
   nodelay(stdscr, TRUE); //non bloccare il programma in attesa di input
 
 
+  define_key("\033[1;5D", KEY_CTRL_LEFT);
+  define_key("\033[1;5C", KEY_CTRL_RIGHT);
+
   if(filexist){
     printfile(0, righe);
   }
@@ -152,17 +189,27 @@ int main(int argc, char *argv[]){
   ref(y, x);
 
   // mvprintw(LINES -1 , COLS - 20, "%d",LINES - 1);// debug
-  // (ch = getch()) != EXIT_KEY
+
   while(true){
     ch = getch();
     getyx(stdscr, my, mx);
     mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
+    mvprintw(1 , COLS - 20, "mx ==> %d",mx );// debug
     // mvprintw(1 , COLS - 20, "my ==> %d",my );// debug
     // mvprintw(2, COLS - 20, "%d",COLS );// debug
-    // mvprintw(3, COLS - 20, "%d",COLS - 1 );// debug
-    ref(my, mx);
+    // mvprintw(4, COLS - 20, "%d",COLS - 1 );// debug
 
-    if(ch == KEY_UP){
+    ref(my, mx); // debug
+
+    if(ch == KEY_CTRL_RIGHT){
+      mx += (mvtonxtsp(y, my, x, mx, righe) - x);
+      x = mvtonxtsp(y, my, x, mx, righe);
+      ref(my, mx);
+    }else if(ch == KEY_CTRL_LEFT){ 
+      mx += (mvtoprvsp(y, my, x, mx, righe) - x);
+      x = mvtoprvsp(y, my, x, mx, righe);
+      ref(my, mx);
+    }else if(ch == KEY_UP){
       if(y - 1 >= 0){
         y--;
 
@@ -208,15 +255,15 @@ int main(int argc, char *argv[]){
       }
     }else if(ch == KEY_LEFT){
       if(x > 0){
-        x--;
-        mx--;
 
-        if(righe[y].length() > COLS - 1 && mx == 0 && x >= COLS - 1){
+        if(righe[y].length() > COLS - 1 && mx <= 0 && x >= COLS - 1){
           scrollrow(my, y, (x) - (COLS - 1), righe);
           mx = COLS - 1;
         }
 
-      }else if(x == 0 && y > 0){
+        x--;
+        mx--;
+     }else if(x == 0 && y > 0){
         y--;
         my--;
         x = righe[y].length();
@@ -231,14 +278,15 @@ int main(int argc, char *argv[]){
       ref(my, mx);
 
     }else if(ch == KEY_RIGHT){
-      if(x + 1 < righe[y].length()){
-        x++;
-        mx++;
-        if(righe[y].length() > COLS - 1 && mx == COLS - 1){
+      if(x + 1 <= righe[y].length()){
+
+        if(righe[y].length() > COLS - 1 && mx >= COLS - 1){
           scrollrow(my, y, x, righe);
           mx = 0;
         }
 
+        x++;
+        mx++;
         ref(my, mx);
       }
     }else if(ch == SAVE_KEY){
@@ -290,6 +338,7 @@ int main(int argc, char *argv[]){
     }else if(ch == KEY_BACKSPACE){ 
       if(x > 0){
         x--;
+        mx--;
         if(y >= 0 && y < righe.size() && x >= 0 && x < righe[y].size()) {
           righe[y].erase(righe[y].begin() + x);
         }
