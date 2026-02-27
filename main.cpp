@@ -33,16 +33,10 @@ void scrollrow(int my, int y, int x, vector<string> righe){
 
 int mvtonxtsp(int y, int my, int x, int mx, vector<string> righe){
   int i;
-
   if(x >= righe[y].length())
     return x;
-
   for(i = x + 1; i + 1 < righe[y].length() && righe[y][i] != ' '; i++){
   }
-
-  // mvprintw(3, COLS - 20, "calcolo ==> %d", ((x + ((i - (x + 1)) + 2)) - mx + (COLS - 1)));
-  // mvprintw(3, COLS - 30, "i ==> %d, calcolo ==> %d", i, ((x + ((i - (x + 1)) + 2)) - mx + (COLS - 1)));
-
   if(i > ((x + ((i - (x + 1)) + 2)) - mx + (COLS - 1))){
     return x;
   }else{
@@ -52,18 +46,13 @@ int mvtonxtsp(int y, int my, int x, int mx, vector<string> righe){
 
 int mvtoprvsp(int y, int my, int x, int &mx, vector<string> righe){
   int i;
-
   for(i = x - 1; i - 1 >= 0 && righe[y][i] != ' '; i--){
   }
-
-  // mvprintw(3, COLS - 20, "calcolo ==> %d", ((x + ((i - (x - 1))) - 1)  - mx));
-
   if(i < ((x + ((i - (x - 1)) - 1))  - mx) || i < 0){
     return x;
   }else{
     return i;
   }
-
 }
 
 
@@ -100,7 +89,7 @@ void printfile(int start, const vector<string> &righe){
   int dif = 0;
   for(int i = start; i < righe.size() && dif < LINES; i++){
     if(righe[i].length() > COLS - 1  ){
-      for(int j = 0; j < righe[i].length(); j++){
+      for(int j = 0; j < righe[i].length() && j < COLS - 1; j++){
         mvprintw(dif, j, "%c", righe[i][j]);
       }
       dif++;
@@ -140,6 +129,7 @@ int main(int argc, char *argv[]){
 
   x = 0;
   y = 0;
+  error_code ec;
 
 
   if(argc < 2){
@@ -163,6 +153,8 @@ int main(int argc, char *argv[]){
           righe.push_back("");
 
       }
+    }else if(filesystem::is_directory(Nomefile, ec)){
+
     }else{
       righe.push_back("");
     }
@@ -193,13 +185,13 @@ int main(int argc, char *argv[]){
   while(true){
     ch = getch();
     getyx(stdscr, my, mx);
-    //mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
-    //mvprintw(1 , COLS - 20, "mx ==> %d",mx );// debug
+    // mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
+    // mvprintw(1 , COLS - 20, "mx ==> %d",mx );// debug
     // mvprintw(1 , COLS - 20, "my ==> %d",my );// debug
     // mvprintw(2, COLS - 20, "%d",COLS );// debug
     // mvprintw(4, COLS - 20, "%d",COLS - 1 );// debug
 
-    //ref(my, mx); // debug
+    // ref(my, mx); // debug
 
     if(ch == KEY_CTRL_RIGHT){
       mx += (mvtonxtsp(y, my, x, mx, righe) - x);
@@ -271,6 +263,8 @@ int main(int argc, char *argv[]){
         if(righe[y].length() > COLS - 1 && mx == 0 && x >= COLS - 1){
           scrollrow(my, y,((x/(COLS - 1)) * (COLS - 1)), righe);
           mx = ( x - ((x/(COLS - 1)) * (COLS - 1)));
+        }else{
+          mx = x;
         }
 
       }
@@ -328,7 +322,12 @@ int main(int argc, char *argv[]){
       for(int i = righe.size() - 1; i > y; i--){
         righe[i] = righe[i - 1];
       }
-      righe[y] = "";
+      if(x < righe[y - 1].length()){
+        righe[y].assign(righe[y - 1].begin() + x, righe[y - 1].end());
+        righe[y - 1].erase(righe[y - 1].begin() + x, righe[y - 1].end());
+      }else{
+        righe[y] = "";
+      }
       x = 0;
       mx = 0;
       clear();
