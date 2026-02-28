@@ -118,7 +118,7 @@ void printfile(const Viewport &v, const Buffer &b){
   }
 }
 
-void insertline(Cursor &c, Buffer &b){
+void insertline(Cursor &c, Buffer &b, Viewport &v){
   b.rows.push_back("");
   for(int i = b.rows.size() - 1; i > c.y; i--){
     b.rows[i] = b.rows[i - 1];
@@ -127,7 +127,7 @@ void insertline(Cursor &c, Buffer &b){
   b.rows[c.y + 1] = b.rows[c.y].substr(c.x);
   b.rows[c.y] = b.rows[c.y].substr(0, c.x);
   
-  c.y++;
+  downmove(c, b, v);
   c.x = 0;
 }
 
@@ -218,7 +218,7 @@ int main(int argc, char *argv[]){
       downmove(c, b, v);
       ref(c, v);
     }else if(ch == '\n'){
-      insertline(c, b);
+      insertline(c, b, v);
       printfile(v, b);
       ref(c, v);
     }
