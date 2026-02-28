@@ -7,401 +7,232 @@
 #include <unistd.h>
 #include <ncurses.h>
 #include <filesystem>
-
 #include "ncurses-toolkit/include/menu.hpp"
-// #include "ncurses-toolkit/include/dialog_box.hpp"
-// primo commento da gim btw
 
-using namespace std;
+// implementare enter 
+// secondo commento da gim btw
 
-#define KEY_CTRL_LEFT  1001
-#define KEY_CTRL_RIGHT 1002
-#define EXIT_KEY 24 // ctrl+x = 24
-#define TAB 2 
-#define SAVE_KEY 23 // ctrl+w = 23 , ctrl+o = 15
+struct Cursor{
+  int y, my;
+  int x, mx;
+};
 
+struct Viewport{
+  int firstpov;
+};
 
-void scrollrow(int my, int y, int x, vector<string> righe){
-  move(my, 0);
-  clrtoeol();
-  int temp = 0;
-  for(int i = x; i < righe[y].length() && temp < COLS - 1; i++){
-    mvprintw(my, temp, "%c", righe[y][i]);
-    temp++;
-  }
-}
+struct Buffer{
+  std::vector<std::string> rows;
+};
 
-int mvtonxtsp(int y, int my, int x, int mx, vector<string> righe){
-  int i;
-  if(x >= righe[y].length())
-    return x;
-  for(i = x + 1; i + 1 < righe[y].length() && righe[y][i] != ' '; i++){
-  }
-  if(i > ((x + ((i - (x + 1)) + 2)) - mx + (COLS - 1))){
-    return x;
-  }else{
-     return i + 1;
-  }
-}
+/***************stand*alone*func************************/
 
-int mvtoprvsp(int y, int my, int x, int &mx, vector<string> righe){
-  int i;
-  for(i = x - 1; i - 1 >= 0 && righe[y][i] != ' '; i--){
-  }
-  if(i < ((x + ((i - (x - 1)) - 1))  - mx) || i < 0){
-    return x;
-  }else{
-    return i;
-  }
-}
-
-
-void reprintrow(int y, int my, vector<string> righe){
-  move(my, 0);
-  clrtoeol();
-  mvprintw(my, 0, "%s",righe[y].c_str());
-}
-
-void ref(int y ,int x){
-  move(y, x);
-  refresh();
-}
-
-void resetglobalsrc(){
-  curs_set(1);          // ripristina visibilità
-  touchwin(stdscr);     // forza redraw
-  refresh();
-}
-
-string printmenu(string title, vector<string> &items){
-  string selection;
-  try {
-    Menu* menu = new Menu(title, items);
-    selection = menu->show();
-    delete menu;
-  } catch(runtime_error &e) {
-    cerr << e.what() << std::endl;
-  }
-  return selection;
-}
-
-void printfile(int start, const vector<string> &righe){
-  int dif = 0;
-  for(int i = start; i < righe.size() && dif < LINES; i++){
-    if(righe[i].length() > COLS - 1  ){
-      for(int j = 0; j < righe[i].length() && j < COLS - 1; j++){
-        mvprintw(dif, j, "%c", righe[i][j]);
-      }
-      dif++;
-    }else{
-      mvprintw(dif, 0, "%s", righe[i].c_str());
-      dif++;
-    }
-  }
+void ref(const Cursor &c){
+  move(c.my, c.mx);
   refresh();
 }
 
 void disableFlowControl(){
-  termios t;                            // dichiara t per salvare la configurazione della flag
-  tcgetattr(STDIN_FILENO, &t);  // ribaltata con ~ (not in c) ribalta i bit della flag
-  t.c_iflag &= ~(IXON);         // nella zona IXON che attiva l'input dei caratteri ctrl+s ecc..
-  tcsetattr(STDIN_FILENO, TCSANOW, &t); // e poi lo risalvo con settattribut immediatamente con tcs.
+  termios t;
+  tcgetattr(STDIN_FILENO, &t);
+  t.c_iflag &= ~(IXON);
+  tcsetattr(STDIN_FILENO, TCSANOW, &t);
 }
 
+void savefile(const Buffer &b, std::string pt){
+  std::ofstream file(pt);
+  if(file.is_open()){
+    for(int i = 0; i < b.rows.size(); i++){
+      file << b.rows[i] << std::endl;
+    }
+    file.close();
+  }
+}
+
+/***************stand*alone*func************************/
+
+void init(){
+  initscr();         
+  noecho();         
+  keypad(stdscr, TRUE);
+  cbreak();
+  disableFlowControl();
+}
+
+void printrow(const Cursor &c, const Buffer &b){
+  move(c.my, 0);
+  clrtoeol();
+  printw("%s", b.rows[c.y].c_str());
+}
+
+void writerow(Cursor &c, Buffer &b, int ch){
+  b.rows[c.y].insert(c.x, 1, char(ch));
+  c.x++;
+  c.mx++;
+}
+
+void removechar(Cursor &c, Buffer &b){
+  if(c.x > 0 && c.x <= b.rows[c.y].length() && c.y >= 0 && c.y < b.rows.size()){
+    c.x--;
+    c.mx--;
+    b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
+  }
+}
+
+void leftmove(Cursor &c){
+  if(c.x - 1 >= 0){
+    c.x--;
+    c.mx--;
+  }
+}
+
+void rightmove(Cursor &c, const Buffer &b){
+  if(c.x + 1 <= b.rows[c.y].length()){
+    c.x++;
+    c.mx++;
+  }
+}
+
+void upmove(Cursor &c, Viewport &v){
+  if(c.y - 1 >= 0){
+    if(c.my == 0 && c.y > 0){
+      v.firstpov--;
+    }else{
+      c.my--;
+    }
+
+    c.y--;
+    c.x = 0;
+    c.mx = 0;
+  }
+}
+
+void downmove(Cursor &c, const Buffer &b, Viewport &v){
+  if(c.y + 1 < b.rows.size()){
+    if(c.my == LINES - 1){
+      v.firstpov++; 
+    }else{
+      c.my++;
+    }
+
+    c.y++;
+    c.x = 0;
+    c.mx = 0;
+  }
+}
+
+void printfile(const Viewport &v, const Buffer &b){
+  clear();
+  int temp = 0;
+  for(int i = v.firstpov; i < b.rows.size() && temp < LINES; i++){ 
+    mvprintw(temp, 0, "%s", b.rows[i].c_str());
+    temp++;
+  }
+}
 
 int main(int argc, char *argv[]){
 
-  signal(SIGINT, SIG_IGN);
-  signal(SIGTSTP, SIG_IGN);
-  signal(SIGQUIT, SIG_IGN);
+  const int SAVE_KEY = 23; // ctrl+w
+  const int QUIT_KEY = 24; // ctrl+x
 
-  vector<string> righe;
+  const int KEY_CTRL_LEFT = 1000; 
+  const int KEY_CTRL_RIGHT = 1001;
+  const int KEY_CTRL_UP = 1002; 
+  const int KEY_CTRL_DOWN = 1003; 
 
-  int x;
-  int y;
+  Cursor c;
+  Buffer b;
+  Viewport v;
+
+  c.x = 0;
+  c.y = 0;
+  c.mx = 0;
+  c.my = 0;
+
   int ch;
-  bool filexist = false;
-  bool run = true;
+  int povupdate;
+  v.firstpov = 0;
 
-  int my, mx;
+  std::string pt;
 
-  string Nomefile;
+  if(argc > 1){
+    pt = argv[1];
+    if(std::filesystem::exists(pt)){
+      std::ifstream file(pt);
 
-  x = 0;
-  y = 0;
-  error_code ec;
-
-
-  if(argc < 2){
-    cerr << "you must give an argument" << endl;
-    return 1;
-  }else{
-    Nomefile = argv[1];
-    int tmp = 0;
-    if (filesystem::exists(Nomefile)){
-      ifstream file(Nomefile);
       if(file.is_open()){
-        string line;
+        std::string line;
         while(getline(file, line)){
-          tmp++;
-          righe.push_back(line);
+          b.rows.push_back(line);
         }
-        file.close();
-
-        filexist = true;
-        if(tmp == 0)
-          righe.push_back("");
-
       }
-    }else if(filesystem::is_directory(Nomefile, ec)){
 
+      if(b.rows.empty()){
+        b.rows.push_back("");
+      }
+
+      file.close();
     }else{
-      righe.push_back("");
+      b.rows.push_back("");
     }
-
-
+  }else{
+    std::cerr << "you must pass an argument\n";
+    return 1;
   }
 
-  initscr();         //inizializzo ncurses
-  noecho();          //disattivo i tasti mostrati a schermo
-  keypad(stdscr, TRUE);//attivo tasti speciali
-  cbreak();
-  disableFlowControl();
-  nodelay(stdscr, TRUE); //non bloccare il programma in attesa di input
+  init();
+  printfile(v, b);
+  ref(c);
 
 
   define_key("\033[1;5D", KEY_CTRL_LEFT);
   define_key("\033[1;5C", KEY_CTRL_RIGHT);
-
-  if(filexist){
-    printfile(0, righe);
-  }
+  define_key("\033[1;5A", KEY_CTRL_UP);
+  define_key("\033[1;5B", KEY_CTRL_DOWN);
 
 
-  ref(y, x);
-
-  // mvprintw(LINES -1 , COLS - 20, "%d",LINES - 1);// debug
+  // main loop
 
   while(true){
+    povupdate = v.firstpov;
     ch = getch();
-    getyx(stdscr, my, mx);
-    // mvprintw(0 , COLS - 20, "y ==> %d x ==> %d",y,x );// debug
-    // mvprintw(1 , COLS - 20, "mx ==> %d",mx );// debug
-    // mvprintw(1 , COLS - 20, "my ==> %d",my );// debug
-    // mvprintw(2, COLS - 20, "%d",COLS );// debug
-    // mvprintw(4, COLS - 20, "%d",COLS - 1 );// debug
 
-    // ref(my, mx); // debug
-
-    if(ch == KEY_CTRL_RIGHT){
-      mx += (mvtonxtsp(y, my, x, mx, righe) - x);
-      x = mvtonxtsp(y, my, x, mx, righe);
-      ref(my, mx);
-    }else if(ch == KEY_CTRL_LEFT){ 
-      mx += (mvtoprvsp(y, my, x, mx, righe) - x);
-      x = mvtoprvsp(y, my, x, mx, righe);
-      ref(my, mx);
-    }else if(ch == KEY_UP){
-      if(y - 1 >= 0){
-        y--;
-
-        if(y < righe.size()){
-          x = righe[y].length();
-          if(x > COLS - 1){
-            x = 0;
-          }
-        }
-
-        mx = x;
-
-        if(my == 0){
-          clear();
-          printfile(y, righe);
-          ref(my, mx);
-        }else{
-          ref(my - 1, mx);
-        }
-
-      }
-    }else if(ch == KEY_DOWN){
-      if(y + 1 < righe.size()){
-        y++;
-
-        x = righe[y].length();
-        if(x > COLS - 1){
-          x = 0;
-        }
-
-        mx = x;
-
-        if(my == LINES - 1){
-          if(y > LINES - 1){
-            clear();
-            printfile(y - my, righe);
-          }          
-          ref(my, mx);
-        }else{
-          ref(my + 1, x);
-        }
-
-      }
-    }else if(ch == KEY_LEFT){
-      if(x > 0){
-
-        if(righe[y].length() > COLS - 1 && mx <= 0 && x >= COLS - 1){
-          scrollrow(my, y, (x) - (COLS - 1), righe);
-          mx = COLS - 1;
-        }
-
-        x--;
-        mx--;
-     }else if(x == 0 && y > 0){
-        y--;
-        my--;
-        x = righe[y].length();
-
-        if(righe[y].length() > COLS - 1 && mx == 0 && x >= COLS - 1){
-          scrollrow(my, y,((x/(COLS - 1)) * (COLS - 1)), righe);
-          mx = ( x - ((x/(COLS - 1)) * (COLS - 1)));
-        }else{
-          mx = x;
-        }
-
-      }
-
-      ref(my, mx);
-
-    }else if(ch == KEY_RIGHT){
-      if(x + 1 <= righe[y].length()){
-
-        if(righe[y].length() > COLS - 1 && mx >= COLS - 1){
-          scrollrow(my, y, x, righe);
-          mx = 0;
-        }
-
-        x++;
-        mx++;
-        ref(my, mx);
-      }
+    if(isprint(ch)){
+      writerow(c, b, ch);
+      printrow(c, b);
+      ref(c);
+    }else if(ch == KEY_BACKSPACE){
+      removechar(c, b);
+      printrow(c, b);
+      ref(c);
     }else if(ch == SAVE_KEY){
-      ofstream file(Nomefile);
-      if(file.is_open()){
-        for(int i = 0; i < righe.size(); i++){
-          file << righe[i] << endl; //scrivo il file
-        }
-        file.close();
-
-        vector<string> items = {"OK", "EXIT"};
-        string sel = printmenu("writing went well", items); // return the selection of the user
-
-        if(sel == "EXIT"){
-          endwin();
-          return 0;
-        }
-
-        resetglobalsrc();
-      }else{
-
-        vector<string> items = {"OK", "EXIT"};
-        string sel = printmenu("writing went wrong", items); // return the selection of the user
-        resetglobalsrc();
-
-        if(sel == "EXIT"){
-          endwin();
-          return 0;
-        }
-
-        x = 0;
-        mx = 0;
-        ref(my, mx);
-      }
-    }else if(ch == '\n'){ //enter
-      y++;
-      my++;
-      righe.push_back("");
-      for(int i = righe.size() - 1; i > y; i--){
-        righe[i] = righe[i - 1];
-      }
-      if(x < righe[y - 1].length()){
-        righe[y].assign(righe[y - 1].begin() + x, righe[y - 1].end());
-        righe[y - 1].erase(righe[y - 1].begin() + x, righe[y - 1].end());
-      }else{
-        righe[y] = "";
-      }
-      x = 0;
-      mx = 0;
-      clear();
-      printfile(y - my, righe);
-      ref(my, mx);
-
-    }else if(ch == KEY_BACKSPACE){ 
-      if(x > 0){
-        x--;
-        mx--;
-        if(y >= 0 && y < righe.size() && x >= 0 && x < righe[y].size()) {
-          righe[y].erase(righe[y].begin() + x);
-        }
-
-        if(x > COLS - 1 || righe[y].length() > COLS - 1){
-          if(righe[y].length() > COLS - 1 && x < COLS - 1){
-            mx = x;
-            scrollrow(my, y, 0, righe);
-          }else{
-            scrollrow(my, y, x - mx, righe);
-          }
-        }else{
-          mx = x;
-          reprintrow(y, my, righe);
-        }
-        ref(my, mx);
-
-      }else if (x == 0 && y > 0){
-        if (righe[y].empty()) {
-          x = righe[y - 1].length();
-          righe.erase(righe.begin() + y);
-          clear();
-          printfile(y - my, righe);
-          ref(my - 1, x);
-          y--;
-        } 
-      }
-    }else if(isprint(ch)){
-
-      righe[y].insert(x, 1, (char)ch);
-      if(x > COLS - 1 || righe[y].length() > COLS - 1){
-        scrollrow(my, y, x - mx, righe);
-      }else{
-        reprintrow(y, my, righe);
-      }
-      x++;
-      mx++;
-      ref(my, mx);
-
-    }else if(ch == EXIT_KEY){
-      vector<string> items = {"YES", "NO"};
-      string selection = printmenu("EXIT",items);
-
-      if(selection == "YES"){
-        endwin();
-        return 0;
-      }
-
-      resetglobalsrc();
-    }else if(ch == 9){ // tab
-      righe[y].insert(x, TAB, ' ');
-      reprintrow(y, my, righe);
-      mx += TAB;
-      x += TAB;
-      ref(my, mx);
+      savefile(b, pt);
+    }else if(ch == KEY_LEFT){
+      leftmove(c);
+      ref(c);
+    }else if(ch == KEY_RIGHT){
+      rightmove(c, b);
+      ref(c);
+    }else if(ch == QUIT_KEY){
+      endwin();
+      return 0;
+    }else if(ch == KEY_UP){
+      upmove(c, v);
+      ref(c);
+    }else if(ch == KEY_DOWN){
+      downmove(c, b, v);
+      ref(c);
     }
 
-    timeout(100);
+    if(povupdate != v.firstpov){
+      clear();
+      printfile(v, b);
+      ref(c);
+    }
 
   }
-
 
   endwin();
 
   return 0;
 }
-
