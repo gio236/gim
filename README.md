@@ -1,13 +1,12 @@
 # GIM Text Editor
 
-**GIM Text Editor** is a terminal-based text editor built in C++ using the `ncurses` library and a custom `ncurses-toolkit` for UI components like menus and message boxes.
+**GIM Text Editor** is a terminal-based text editor built in C++ using the `ncurses` library
 
 ## Prerequisites
 
 To build and run GIM, you need:
 
 1. **ncurses library** – provides terminal handling and UI capabilities. 
-2. **ncurses-toolkit** – this will be installed with the script.
 
 ### Installing `ncurses`
 
@@ -22,8 +21,6 @@ Depending on your system, install `ncurses` using your package manager:
 | Windows (MSYS2 / MinGW)    | `pacman -S mingw-w64-x86_64-ncurses` |
 
 ### Building gim
-
-for installing : 
 
 ```bash
 bash installer.sh
@@ -40,25 +37,10 @@ gim filethatyouwantopen
 ```bash 
 .
 ├── a.out
-├── installer.sh
 ├── LICENSE
 ├── main.cpp
+├── installer.sh
 ├── makefile
-├── ncurses-toolkit
-│   ├── include
-│   │   ├── menu.hpp
-│   │   └── message_box.hpp
-│   ├── LICENSE
-│   ├── Makefile
-│   ├── misc
-│   │   ├── demo.cpp
-│   │   ├── mbox_demo.cpp
-│   │   └── menu_demo.cpp
-│   ├── README.md
-│   └── src
-│       ├── menu.cpp
-│       └── message_box.cpp
-└── README.md
-
+└── README.md 
 
 ```
