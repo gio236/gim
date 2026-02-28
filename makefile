@@ -5,7 +5,7 @@ TARGET = a.out
 all: $(TARGET)
 
 $(TARGET): main.cpp
-	g++ main.cpp ~/gim/ncurses-toolkit/src/menu.cpp ~/gim/ncurses-toolkit/src/message_box.cpp -lncurses -o $(TARGET)
+	g++ main.cpp -lncurses -o $(TARGET)
 
 
 # Regola per pulire i file generati
