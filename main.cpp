@@ -9,7 +9,6 @@
 #include <filesystem>
 #include "ncurses-toolkit/include/menu.hpp"
 
-// implementare enter 
 // secondo commento da gim btw
 
 struct Cursor{
@@ -24,8 +23,6 @@ struct Viewport{
 struct Buffer{
   std::vector<std::string> rows;
 };
-
-/***************stand*alone*func************************/
 
 void ref(const Cursor &c, const Viewport &v){
   move((c.y - v.firstpov), c.x);
@@ -49,8 +46,6 @@ void savefile(const Buffer &b, const std::string &pt){
   }
 }
 
-/***************stand*alone*func************************/
-
 void init(){
   initscr();         
   noecho();         
@@ -65,18 +60,6 @@ void printrow(const Cursor &c, const Buffer &b, const Viewport &v){
   printw("%s", b.rows[c.y].c_str());
 }
 
-void writerow(Cursor &c, Buffer &b, int ch){
-  b.rows[c.y].insert(c.x, 1, char(ch));
-  c.x++;
-}
-
-void removechar(Cursor &c, Buffer &b){
-  if(c.x > 0 && c.y >= 0 && c.y < b.rows.size()){
-    c.x--;
-    b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
-  }
-}
-
 void leftmove(Cursor &c){
   if(c.x - 1 >= 0){
     c.x--;
@@ -86,6 +69,18 @@ void leftmove(Cursor &c){
 void rightmove(Cursor &c, const Buffer &b){
   if(c.x + 1 <= b.rows[c.y].length()){
     c.x++;
+  }
+}
+
+void writerow(Cursor &c, Buffer &b, int ch){
+  b.rows[c.y].insert(c.x, 1, char(ch));
+  rightmove(c, b);
+}
+
+void removechar(Cursor &c, Buffer &b){
+  if(c.x > 0 && c.y >= 0 && c.y < b.rows.size()){
+    leftmove(c);
+    b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
   }
 }
 
@@ -195,39 +190,32 @@ int main(int argc, char *argv[]){
     if(isprint(ch)){
       writerow(c, b, ch);
       printrow(c, b, v);
-      ref(c, v);
     }else if(ch == KEY_BACKSPACE){
       removechar(c, b);
       printrow(c, b, v);
-      ref(c, v);
     }else if(ch == SAVE_KEY){
       savefile(b, pt);
     }else if(ch == KEY_LEFT){
       leftmove(c);
-      ref(c, v);
     }else if(ch == KEY_RIGHT){
       rightmove(c, b);
-      ref(c, v);
     }else if(ch == QUIT_KEY){
       endwin();
       return 0;
     }else if(ch == KEY_UP){
       upmove(c, v);
-      ref(c, v);
     }else if(ch == KEY_DOWN){
       downmove(c, b, v);
-      ref(c, v);
     }else if(ch == '\n'){
       insertline(c, b, v);
       printfile(v, b);
-      ref(c, v);
     }
 
     if(povupdate != v.firstpov){
-      clear();
       printfile(v, b);
-      ref(c, v);
     }
+
+    ref(c, v);
 
   }
   endwin();
