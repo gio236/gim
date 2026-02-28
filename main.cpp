@@ -9,6 +9,8 @@
 #include <filesystem>
 #include "ncurses-toolkit/include/menu.hpp"
 
+// colonna desiderata
+// backspace che unisce righe
 // secondo commento da gim btw
 
 struct Cursor{
