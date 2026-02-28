@@ -7,10 +7,11 @@
 #include <unistd.h>
 #include <ncurses.h>
 #include <filesystem>
-#include "ncurses-toolkit/include/menu.hpp"
 
+// TODO
 // colonna desiderata
 // backspace che unisce righe
+// status bar
 // secondo commento da gim btw
 
 struct Cursor{
@@ -160,16 +161,16 @@ int main(int argc, char *argv[]){
         while(getline(file, line)){
           b.rows.push_back(line);
         }
+        if(b.rows.empty()){
+          b.rows.push_back("");
+        }
+        file.close();
       }
-      if(b.rows.empty()){
-        b.rows.push_back("");
-      }
-      file.close();
     }else{
       b.rows.push_back("");
     }
   }else{
-    std::cerr << "you must pass an argument\n";
+    std::cerr << "Usage : gim <filename>\n";
     return 1;
   }
 
