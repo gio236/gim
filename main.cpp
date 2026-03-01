@@ -8,6 +8,17 @@
 #include <ncurses.h>
 #include <filesystem>
 
+const int SAVE_KEY = 23; // ctrl+w
+const int QUIT_KEY = 24; // ctrl+x
+const int KEY_CTRL_LEFT = 1000; 
+const int KEY_CTRL_RIGHT = 1001;
+const int KEY_CTRL_UP = 1002; 
+const int KEY_CTRL_DOWN = 1003; 
+
+const std::string statusmessage = "ctrl-w for writing, ctrl-x for exit";
+
+
+
 // TODO
 // colonna desiderata
 // backspace che unisce righe
@@ -34,8 +45,14 @@ void desiredcols(Cursor &c, const Buffer &b){
   }
 }
 
-void ref(const Cursor &c, const Viewport &v){
+void ref(const Cursor &c, const Viewport &v, WINDOW *status, const std::string pt, const Buffer &b){
+  werase(status);
+  // dovrei implementare controllo per larghezza della finestra
+  mvwprintw(status, 0, 0, "%s - %d/%d lines", pt.c_str(), c.y, b.rows.size());
+  mvwprintw(status, 0, COLS - 1 - statusmessage.length(), "%s", statusmessage.c_str());
+
   move((c.y - v.firstpov), c.x);
+  wrefresh(status);
   refresh();
 }
 
@@ -45,6 +62,8 @@ void disableFlowControl(){
   t.c_iflag &= ~(IXON);
   tcsetattr(STDIN_FILENO, TCSANOW, &t);
 }
+
+
 
 void savefile(const Buffer &b, const std::string &pt){
   std::ofstream file(pt);
@@ -106,7 +125,7 @@ void upmove(Cursor &c,const Buffer &b, Viewport &v){
 
 void downmove(Cursor &c, const Buffer &b, Viewport &v){
   if(c.y + 1 < b.rows.size()){
-    if((c.y - v.firstpov) == LINES - 1){
+    if((c.y - v.firstpov) == LINES - 2){
       v.firstpov++; 
     }
     c.y++;
@@ -117,7 +136,7 @@ void downmove(Cursor &c, const Buffer &b, Viewport &v){
 void printfile(const Viewport &v, const Buffer &b){
   clear();
   int temp = 0;
-  for(int i = v.firstpov; i < b.rows.size() && temp < LINES; i++){ 
+  for(int i = v.firstpov; i < b.rows.size() && temp < LINES - 1; i++){ 
     mvprintw(temp, 0, "%s", b.rows[i].c_str());
     temp++;
   }
@@ -137,13 +156,6 @@ void insertline(Cursor &c, Buffer &b, Viewport &v){
 }
 
 int main(int argc, char *argv[]){
-
-  const int SAVE_KEY = 23; // ctrl+w
-  const int QUIT_KEY = 24; // ctrl+x
-  const int KEY_CTRL_LEFT = 1000; 
-  const int KEY_CTRL_RIGHT = 1001;
-  const int KEY_CTRL_UP = 1002; 
-  const int KEY_CTRL_DOWN = 1003; 
 
   Cursor c;
   Buffer b;
@@ -181,16 +193,29 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
-  init();
-  printfile(v, b);
-  ref(c, v);
 
-  define_key("\033[1;5D", KEY_CTRL_LEFT);
-  define_key("\033[1;5C", KEY_CTRL_RIGHT);
+  init();
+
+  printfile(v, b);
+
+  WINDOW *status = newwin(1, COLS, LINES - 1, 0); // statusbar
+  if(has_colors()) {
+    start_color();
+    init_pair(1, COLOR_BLACK, COLOR_WHITE);
+    wbkgd(status, COLOR_PAIR(1));
+  }
+
+
   define_key("\033[1;5A", KEY_CTRL_UP);
   define_key("\033[1;5B", KEY_CTRL_DOWN);
+  define_key("\033[1;5C", KEY_CTRL_RIGHT);
+  define_key("\033[1;5D", KEY_CTRL_LEFT);
+
+  ref(c, v, status, pt, b);
+  ref(c, v, status, pt, b);
 
   // main loop
+
   
   while(true){
 
@@ -219,13 +244,15 @@ int main(int argc, char *argv[]){
     }else if(ch == '\n'){
       insertline(c, b, v);
       printfile(v, b);
+      ref(c, v, status, pt, b);
     }
 
     if(povupdate != v.firstpov){
       printfile(v, b);
+      ref(c, v, status, pt, b);
     }
 
-    ref(c, v);
+    ref(c, v, status, pt, b);
 
   }
   endwin();
