@@ -94,7 +94,7 @@ void removechar(Cursor &c, Buffer &b){
   }
 }
 
-void upmove(Cursor &c, Viewport &v, const Buffer &b){
+void upmove(Cursor &c,const Buffer &b, Viewport &v){
   if(c.y - 1 >= 0){
     if((c.y - v.firstpov) == 0 && c.y > 0){
       v.firstpov--;
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]){
       endwin();
       return 0;
     }else if(ch == KEY_UP){
-      upmove(c, v, b);
+      upmove(c, b, v);
     }else if(ch == KEY_DOWN){
       downmove(c, b, v);
     }else if(ch == '\n'){
