@@ -27,6 +27,13 @@ struct Buffer{
   std::vector<std::string> rows;
 };
 
+void desiredcols(Cursor &c, const Buffer &b){
+  int len = b.rows[c.y].length();
+  if(c.x > len){
+    c.x = len;
+  }
+}
+
 void ref(const Cursor &c, const Viewport &v){
   move((c.y - v.firstpov), c.x);
   refresh();
@@ -87,13 +94,13 @@ void removechar(Cursor &c, Buffer &b){
   }
 }
 
-void upmove(Cursor &c, Viewport &v){
+void upmove(Cursor &c, Viewport &v, const Buffer &b){
   if(c.y - 1 >= 0){
     if((c.y - v.firstpov) == 0 && c.y > 0){
       v.firstpov--;
     }
     c.y--;
-    c.x = 0;
+    desiredcols(c, b);
   }
 }
 
@@ -103,7 +110,7 @@ void downmove(Cursor &c, const Buffer &b, Viewport &v){
       v.firstpov++; 
     }
     c.y++;
-    c.x = 0;
+    desiredcols(c, b);
   }
 }
 
@@ -206,7 +213,7 @@ int main(int argc, char *argv[]){
       endwin();
       return 0;
     }else if(ch == KEY_UP){
-      upmove(c, v);
+      upmove(c, v, b);
     }else if(ch == KEY_DOWN){
       downmove(c, b, v);
     }else if(ch == '\n'){
