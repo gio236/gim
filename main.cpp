@@ -47,7 +47,7 @@ void desiredcols(Cursor &c, const Buffer &b){
 void ref(const Cursor &c, const Viewport &v, WINDOW *status, const std::string pt, const Buffer &b){
   werase(status);
   // dovrei implementare controllo per larghezza della finestra
-  mvwprintw(status, 0, 0, "%s - %d/%d lines", pt.c_str(), c.y, b.rows.size());
+  mvwprintw(status, 0, 0, "%s - %d/%d lines", pt.c_str(), c.y + 1, b.rows.size());
   mvwprintw(status, 0, COLS - 1 - statusmessage.length(), "%s", statusmessage.c_str());
 
   move((c.y - v.firstpov), c.x);
@@ -87,6 +87,8 @@ void printrow(const Cursor &c, const Buffer &b, const Viewport &v){
   clrtoeol();
   printw("%s", b.rows[c.y].c_str());
 }
+
+//ciao ciao da kilo
 
 void upmove(Cursor &c,const Buffer &b, Viewport &v){
   if(c.y - 1 >= 0){
@@ -133,11 +135,19 @@ void writerow(Cursor &c, Buffer &b, Viewport &v, int ch){
   rightmove(c, b, v);
 }
 
-void removechar(Cursor &c, Buffer &b, Viewport &v){
+bool removechar(Cursor &c, Buffer &b, Viewport &v){
   if(c.x > 0 && c.y >= 0 && c.y < b.rows.size()){
     leftmove(c, b, v);
     b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
+  }else if(c.y > 0){
+    c.x = b.rows[c.y - 1].length();
+    b.rows[c.y - 1] += b.rows[c.y];
+    b.rows.erase(b.rows.begin() + c.y);
+    upmove(c, b, v);
+    return true;
   }
+
+  return false;
 }
 
 void printfile(const Viewport &v, const Buffer &b){
@@ -233,8 +243,12 @@ int main(int argc, char *argv[]){
       writerow(c, b, v, ch);
       printrow(c, b, v);
     }else if(ch == KEY_BACKSPACE){
-      removechar(c, b, v);
-      printrow(c, b, v);
+      if(removechar(c, b, v)){
+        printfile(v, b);
+        ref(c, v, status, pt, b);
+      }else{
+        printrow(c, b, v);
+      }
     }else if(ch == SAVE_KEY){
       savefile(b, pt);
     }else if(ch == KEY_LEFT){
