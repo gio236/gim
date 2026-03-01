@@ -18,7 +18,6 @@ const int KEY_CTRL_DOWN = 1003;
 const std::string statusmessage = "ctrl-w for writing, ctrl-x for exit";
 
 
-
 // TODO
 // colonna desiderata
 // backspace che unisce righe
@@ -89,30 +88,6 @@ void printrow(const Cursor &c, const Buffer &b, const Viewport &v){
   printw("%s", b.rows[c.y].c_str());
 }
 
-void leftmove(Cursor &c){
-  if(c.x - 1 >= 0){
-    c.x--;
-  }
-}
-
-void rightmove(Cursor &c, const Buffer &b){
-  if(c.x + 1 <= b.rows[c.y].length()){
-    c.x++;
-  }
-}
-
-void writerow(Cursor &c, Buffer &b, int ch){
-  b.rows[c.y].insert(c.x, 1, char(ch));
-  rightmove(c, b);
-}
-
-void removechar(Cursor &c, Buffer &b){
-  if(c.x > 0 && c.y >= 0 && c.y < b.rows.size()){
-    leftmove(c);
-    b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
-  }
-}
-
 void upmove(Cursor &c,const Buffer &b, Viewport &v){
   if(c.y - 1 >= 0){
     if((c.y - v.firstpov) == 0 && c.y > 0){
@@ -130,6 +105,38 @@ void downmove(Cursor &c, const Buffer &b, Viewport &v){
     }
     c.y++;
     desiredcols(c, b);
+  }
+}
+
+
+
+void leftmove(Cursor &c, const Buffer &b, Viewport &v){
+  if(c.x - 1 >= 0){
+    c.x--;
+  }else if(c.y > 0){
+    upmove(c, b, v);
+    c.x = b.rows[c.y].length();
+  }
+}
+
+void rightmove(Cursor &c, const Buffer &b, Viewport &v){
+  if(c.x + 1 <= b.rows[c.y].length()){
+    c.x++;
+  }else if(c.y + 1 < b.rows.size()){
+    downmove(c, b, v);
+    c.x = 0;
+  }
+}
+
+void writerow(Cursor &c, Buffer &b, Viewport &v, int ch){
+  b.rows[c.y].insert(c.x, 1, char(ch));
+  rightmove(c, b, v);
+}
+
+void removechar(Cursor &c, Buffer &b, Viewport &v){
+  if(c.x > 0 && c.y >= 0 && c.y < b.rows.size()){
+    leftmove(c, b, v);
+    b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
   }
 }
 
@@ -223,17 +230,17 @@ int main(int argc, char *argv[]){
     ch = getch();
 
     if(isprint(ch)){
-      writerow(c, b, ch);
+      writerow(c, b, v, ch);
       printrow(c, b, v);
     }else if(ch == KEY_BACKSPACE){
-      removechar(c, b);
+      removechar(c, b, v);
       printrow(c, b, v);
     }else if(ch == SAVE_KEY){
       savefile(b, pt);
     }else if(ch == KEY_LEFT){
-      leftmove(c);
+      leftmove(c, b, v);
     }else if(ch == KEY_RIGHT){
-      rightmove(c, b);
+      rightmove(c, b, v);
     }else if(ch == QUIT_KEY){
       endwin();
       return 0;
