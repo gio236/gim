@@ -225,7 +225,7 @@ void handleinput(WINDOW *status){
     case QUIT_KEY:
       if(b.dirt && b.time){
         char buffer[100];
-        std::snprintf(buffer, sizeof(buffer), "WARNING you have unsaved change press ctrl-q %d more times for quit", b.time);
+        std::snprintf(buffer, sizeof(buffer), "WARNING you have unsaved change press ctrl-x %d more times for quit", b.time);
         statusmessage.assign(buffer);
         b.time--;
       }else{
