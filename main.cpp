@@ -1,4 +1,5 @@
 #include <fstream>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <signal.h>
@@ -15,8 +16,9 @@ const int KEY_CTRL_RIGHT = 1001;
 const int KEY_CTRL_UP = 1002; 
 const int KEY_CTRL_DOWN = 1003; 
 
+#define DEFMESS "ctrl-w for writing, ctrl-x for exit"
+#define QUITIME 2 // times you want press before quit, with unsaved changes
 std::string statusmessage = "ctrl-w for writing, ctrl-x for exit";
-
 
 // TODO
 // commentare codice
@@ -33,7 +35,8 @@ struct Viewport{
 
 struct Buffer{
   std::vector<std::string> rows;
-  int dirt = 0;
+  int dirt;
+  int time = QUITIME;
 };
 
 void desiredcols(Cursor &c, const Buffer &b){
@@ -43,10 +46,15 @@ void desiredcols(Cursor &c, const Buffer &b){
   }
 }
 
-void ref(const Cursor &c, const Viewport &v, WINDOW *status, const std::string pt, const Buffer &b){
+void setmessage(const Cursor &c, WINDOW *status, const std::string pt, const Buffer &b){
   werase(status);
   mvwprintw(status, 0, 0, "%s - %d/%d lines", pt.c_str(), c.y + 1, b.rows.size());
   mvwprintw(status, 0, COLS - 1 - statusmessage.length(), "%s", statusmessage.c_str());
+  statusmessage = DEFMESS;
+}
+
+void ref(const Cursor &c, const Viewport &v, WINDOW *status, const std::string &pt, const Buffer &b){
+  setmessage(c, status, pt, b);
 
   refresh();
   wrefresh(status);
@@ -60,15 +68,15 @@ void disableFlowControl(){
   tcsetattr(STDIN_FILENO, TCSANOW, &t);
 }
 
-
-
-void savefile(const Buffer &b, const std::string &pt){
+void savefile(Buffer &b, const std::string &pt){
   std::ofstream file(pt);
   if(file.is_open()){
     for(int i = 0; i < b.rows.size(); i++){
       file << b.rows[i] << std::endl;
     }
     file.close();
+    b.dirt = 0;
+    b.time = QUITIME;
   }
 }
 
@@ -128,10 +136,12 @@ void rightmove(Cursor &c, const Buffer &b, Viewport &v){
 
 void writerow(Cursor &c, Buffer &b, Viewport &v, int ch){
   b.rows[c.y].insert(c.x, 1, char(ch));
+  b.dirt++;
   rightmove(c, b, v);
 }
 
 bool removechar(Cursor &c, Buffer &b, Viewport &v){
+  b.dirt++;
   if(c.x > 0 && c.y >= 0 && c.y < b.rows.size()){
     leftmove(c, b, v);
     b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
@@ -203,7 +213,8 @@ void handleinput(WINDOW *status){
         printrow(c, b, v);
       }
       break;
-    case SAVE_KEY: savefile(b, pt);
+    case SAVE_KEY: 
+      savefile(b, pt);
       break;
     case KEY_LEFT:
       leftmove(c, b, v);
@@ -212,8 +223,16 @@ void handleinput(WINDOW *status){
       rightmove(c, b, v);
       break;
     case QUIT_KEY:
-      endwin();
-      exit(0);
+      if(b.dirt && b.time){
+        char buffer[100];
+        std::snprintf(buffer, sizeof(buffer), "WARNING you have unsaved change press ctrl-q %d more times for quit", b.time);
+        statusmessage.assign(buffer);
+        b.time--;
+      }else{
+        endwin();
+        exit(0);
+      }
+      break;
     case KEY_UP:
       upmove(c, b, v);
       break;
@@ -237,6 +256,7 @@ int main(int argc, char *argv[]){
   c.x = 0;
   c.y = 0;
   v.firstpov = 0;
+  b.dirt = 0;
 
   if(argc > 1){
     pt = argv[1];
