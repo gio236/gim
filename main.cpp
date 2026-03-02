@@ -15,13 +15,11 @@ const int KEY_CTRL_RIGHT = 1001;
 const int KEY_CTRL_UP = 1002; 
 const int KEY_CTRL_DOWN = 1003; 
 
-const std::string statusmessage = "ctrl-w for writing, ctrl-x for exit";
+std::string statusmessage = "ctrl-w for writing, ctrl-x for exit";
 
 
 // TODO
-// colonna desiderata
-// backspace che unisce righe
-// status bar
+// commentare codice
 // secondo commento da gim btw
 
 struct Cursor{
@@ -35,6 +33,7 @@ struct Viewport{
 
 struct Buffer{
   std::vector<std::string> rows;
+  int dirt = 0;
 };
 
 void desiredcols(Cursor &c, const Buffer &b){
@@ -46,13 +45,12 @@ void desiredcols(Cursor &c, const Buffer &b){
 
 void ref(const Cursor &c, const Viewport &v, WINDOW *status, const std::string pt, const Buffer &b){
   werase(status);
-  // dovrei implementare controllo per larghezza della finestra
   mvwprintw(status, 0, 0, "%s - %d/%d lines", pt.c_str(), c.y + 1, b.rows.size());
   mvwprintw(status, 0, COLS - 1 - statusmessage.length(), "%s", statusmessage.c_str());
 
-  move((c.y - v.firstpov), c.x);
-  wrefresh(status);
   refresh();
+  wrefresh(status);
+  move((c.y - v.firstpov), c.x);
 }
 
 void disableFlowControl(){
@@ -87,8 +85,6 @@ void printrow(const Cursor &c, const Buffer &b, const Viewport &v){
   clrtoeol();
   printw("%s", b.rows[c.y].c_str());
 }
-
-//ciao ciao da kilo
 
 void upmove(Cursor &c,const Buffer &b, Viewport &v){
   if(c.y - 1 >= 0){
@@ -172,36 +168,80 @@ void insertline(Cursor &c, Buffer &b, Viewport &v){
   c.x = 0;
 }
 
-int main(int argc, char *argv[]){
+void openfile(std::string filename, Buffer &b){
+  std::ifstream file(filename);
+  if(file.is_open()){
+    std::string line;
+    while(getline(file, line)){
+      b.rows.push_back(line);
+    }
+    if(b.rows.empty()){
+      b.rows.push_back("");
+    }
+    file.close();
+  }else{
+    std::cerr << "erorr while opening file\n";
+  }
+} 
 
-  Cursor c;
-  Buffer b;
-  Viewport v;
+Cursor c;
+Buffer b;
+Viewport v;
+
+
+int ch;
+int povupdate;
+std::string pt;
+
+
+void handleinput(WINDOW *status){
+  switch(ch){
+    case KEY_BACKSPACE: 
+      if(removechar(c, b, v)){
+        printfile(v, b);
+      }else{
+        printrow(c, b, v);
+      }
+      break;
+    case SAVE_KEY: savefile(b, pt);
+      break;
+    case KEY_LEFT:
+      leftmove(c, b, v);
+      break;
+    case KEY_RIGHT:
+      rightmove(c, b, v);
+      break;
+    case QUIT_KEY:
+      endwin();
+      exit(0);
+    case KEY_UP:
+      upmove(c, b, v);
+      break;
+    case KEY_DOWN:
+      downmove(c, b, v);
+      break;
+    default: 
+      if(ch == '\n'){
+        insertline(c, b, v);
+        printfile(v, b);
+      }else{
+        writerow(c, b, v, ch);
+        printrow(c, b, v);
+      }
+   }
+}
+
+
+int main(int argc, char *argv[]){
 
   c.x = 0;
   c.y = 0;
-
-  int ch;
-  int povupdate;
-
   v.firstpov = 0;
-
-  std::string pt;
 
   if(argc > 1){
     pt = argv[1];
     if(std::filesystem::exists(pt)){
-      std::ifstream file(pt);
-      if(file.is_open()){
-        std::string line;
-        while(getline(file, line)){
-          b.rows.push_back(line);
-        }
-        if(b.rows.empty()){
-          b.rows.push_back("");
-        }
-        file.close();
-      }
+      openfile(pt, b);
     }else{
       b.rows.push_back("");
     }
@@ -213,6 +253,11 @@ int main(int argc, char *argv[]){
 
   init();
 
+  define_key("\033[1;5A", KEY_CTRL_UP);
+  define_key("\033[1;5B", KEY_CTRL_DOWN);
+  define_key("\033[1;5C", KEY_CTRL_RIGHT);
+  define_key("\033[1;5D", KEY_CTRL_LEFT);
+
   printfile(v, b);
 
   WINDOW *status = newwin(1, COLS, LINES - 1, 0); // statusbar
@@ -220,62 +265,21 @@ int main(int argc, char *argv[]){
     start_color();
     init_pair(1, COLOR_BLACK, COLOR_WHITE);
     wbkgd(status, COLOR_PAIR(1));
+  }else{
+    std::cerr << "the terminal does not support color\n";
   }
 
 
-  define_key("\033[1;5A", KEY_CTRL_UP);
-  define_key("\033[1;5B", KEY_CTRL_DOWN);
-  define_key("\033[1;5C", KEY_CTRL_RIGHT);
-  define_key("\033[1;5D", KEY_CTRL_LEFT);
-
-  ref(c, v, status, pt, b);
   ref(c, v, status, pt, b);
 
-  // main loop
-
-  
-  while(true){
-
+  while(ch = getch()){
     povupdate = v.firstpov;
-    ch = getch();
-
-    if(isprint(ch)){
-      writerow(c, b, v, ch);
-      printrow(c, b, v);
-    }else if(ch == KEY_BACKSPACE){
-      if(removechar(c, b, v)){
-        printfile(v, b);
-        ref(c, v, status, pt, b);
-      }else{
-        printrow(c, b, v);
-      }
-    }else if(ch == SAVE_KEY){
-      savefile(b, pt);
-    }else if(ch == KEY_LEFT){
-      leftmove(c, b, v);
-    }else if(ch == KEY_RIGHT){
-      rightmove(c, b, v);
-    }else if(ch == QUIT_KEY){
-      endwin();
-      return 0;
-    }else if(ch == KEY_UP){
-      upmove(c, b, v);
-    }else if(ch == KEY_DOWN){
-      downmove(c, b, v);
-    }else if(ch == '\n'){
-      insertline(c, b, v);
+    handleinput(status);
+    if(povupdate != v.firstpov) 
       printfile(v, b);
-      ref(c, v, status, pt, b);
-    }
-
-    if(povupdate != v.firstpov){
-      printfile(v, b);
-      ref(c, v, status, pt, b);
-    }
-
     ref(c, v, status, pt, b);
-
   }
+  
   endwin();
   return 0;
 }
