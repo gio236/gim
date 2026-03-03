@@ -16,7 +16,7 @@ const int KEY_CTRL_RIGHT = 1001;
 const int KEY_CTRL_UP = 1002; 
 const int KEY_CTRL_DOWN = 1003; 
 
-#define TABSPACE 2 // the number of space inserted if you press tab 
+#define TABSPACE 4 // the number of space inserted if you press tab 
 #define DEFMESS "ctrl-w for writing, ctrl-x for exit" // the default messagge in the bottombar
 #define QUITIME 2 // times you want press before quit, with unsaved changes
 
@@ -24,7 +24,9 @@ std::string statusmessage = DEFMESS;
 
 struct Cursor{
   int y;
-  int x;
+  int x, mx; 
+  // x is for acess to the vector
+  // mx is the cursor position in the screen
 };
 
 struct Viewport{
@@ -42,6 +44,16 @@ void desiredcols(Cursor &c, const Buffer &b){
   if(c.x > len){
     c.x = len;
   }
+
+  c.mx = 0;
+  for(int i = 0; i < c.x; i++){
+    if(b.rows[c.y][i] == '\t'){
+      c.mx += TABSPACE - (c.mx % TABSPACE);
+    } else {
+      c.mx++;
+    }
+  }
+
 }
 
 void setmessage(const Cursor &c, WINDOW *status, const std::string pt, const Buffer &b){
@@ -56,7 +68,7 @@ void ref(const Cursor &c, const Viewport &v, WINDOW *status, const std::string &
 
   refresh();
   wrefresh(status);
-  move((c.y - v.firstpov), c.x);
+  move((c.y - v.firstpov), c.mx);
 }
 
 void disableFlowControl(){
@@ -87,9 +99,22 @@ void init(){
 }
 
 void printrow(const Cursor &c, const Buffer &b, const Viewport &v){
-  move((c.y - v.firstpov), 0);
+  int row = c.y - v.firstpov;
+  move(row, 0);
   clrtoeol();
-  printw("%s", b.rows[c.y].c_str());
+  int screen_col = 0;
+  for(int i = 0; i < b.rows[c.y].length() && screen_col < COLS - 1; i++){
+    if(b.rows[c.y][i] == '\t'){
+      int spaces = (TABSPACE - (screen_col % TABSPACE));
+      for(int s = 0; s < spaces && screen_col < COLS - 1; s++){
+        mvaddch(row, screen_col, ' ');
+        screen_col++;
+      }    
+    }else{
+      mvaddch(row, screen_col, b.rows[c.y][i]);
+      screen_col++;
+    }
+  }
 }
 
 void upmove(Cursor &c,const Buffer &b, Viewport &v){
@@ -114,19 +139,35 @@ void downmove(Cursor &c, const Buffer &b, Viewport &v){
 
 void leftmove(Cursor &c, const Buffer &b, Viewport &v){
   if(c.x - 1 >= 0){
+
+    if(b.rows[c.y][c.x - 1] == '\t'){
+      c.mx -= TABSPACE - (c.mx % TABSPACE);
+    }else{
+      c.mx--;
+    }
+
     c.x--;
   }else if(c.y > 0){
     upmove(c, b, v);
     c.x = b.rows[c.y].length();
+    c.mx = b.rows[c.y].length();
   }
 }
 
 void rightmove(Cursor &c, const Buffer &b, Viewport &v){
   if(c.x + 1 <= b.rows[c.y].length()){
+
+    if(b.rows[c.y][c.x] == '\t'){
+      c.mx += TABSPACE - (c.mx % TABSPACE);
+    }else{
+      c.mx++;
+    }
+
     c.x++;
   }else if(c.y + 1 < b.rows.size()){
     downmove(c, b, v);
     c.x = 0;
+    c.mx = 0;
   }
 }
 
@@ -138,13 +179,18 @@ void writerow(Cursor &c, Buffer &b, Viewport &v, int ch){
 }
 
 bool removechar(Cursor &c, Buffer &b, Viewport &v){
-  bool refresh = true;
+  bool refresh = true; 
+  // if refresh is returned as true 
+  // this will ensure that the scren will be cleared 
+  // so will print the all file 
+
   if(c.x > 0 && c.y >= 0){
     leftmove(c, b, v);
     b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
     refresh = false;
   }else if(c.y > 0){
     c.x = b.rows[c.y - 1].length();
+    c.mx = b.rows[c.y - 1].length();
     b.rows[c.y - 1] += b.rows[c.y];
     b.rows.erase(b.rows.begin() + c.y);
     upmove(c, b, v);
@@ -163,8 +209,23 @@ bool removechar(Cursor &c, Buffer &b, Viewport &v){
 void printfile(const Viewport &v, const Buffer &b){
   clear();
   int temp = 0;
+
   for(int i = v.firstpov; i < b.rows.size() && temp < LINES - 1; i++){ 
-    mvprintw(temp, 0, "%s", b.rows[i].c_str());
+    int screen_col = 0;  // colonna effettiva sullo schermo
+    for(int buf_index = 0; buf_index < b.rows[i].length() && screen_col < COLS - 1; buf_index++){
+      char ch = b.rows[i][buf_index];
+
+      if(ch == '\t'){
+        int spaces = TABSPACE - (screen_col % TABSPACE);
+        for(int s = 0; s < spaces && screen_col < COLS - 1; s++){
+          mvaddch(temp, screen_col, ' ');
+          screen_col++;
+        }
+      }else{
+        mvaddch(temp, screen_col, ch);
+        screen_col++;
+      }
+    }
     temp++;
   }
 }
@@ -175,9 +236,10 @@ void insertline(Cursor &c, Buffer &b, Viewport &v){
 
   b.rows.insert(b.rows.begin() + c.y + 1, b.rows[c.y].substr(c.x));
   b.rows[c.y] = b.rows[c.y].substr(0, c.x);
-  
+
   downmove(c, b, v);
   c.x = 0;
+  c.mx = 0;
 }
 
 void openfile(std::string filename, Buffer &b){
@@ -201,8 +263,8 @@ void openfile(std::string filename, Buffer &b){
 void handletab(Cursor &c, Buffer &b, Viewport &v){
   b.time = QUITIME; 
   b.dirt++;
-  b.rows[c.y].insert(c.x, TABSPACE, ' ');
-  c.x += TABSPACE;
+  b.rows[c.y].insert(c.x, 1, '\t');
+  rightmove(c, b, v);
 }
 
 Cursor c;
@@ -263,12 +325,13 @@ void handleinput(WINDOW *status){
         writerow(c, b, v, ch);
         printrow(c, b, v);
       }
-   }
+  }
 }
 
 int main(int argc, char *argv[]){
 
   c.x = 0;
+  c.mx = 0;
   c.y = 0;
   v.firstpov = 0;
   b.dirt = 0;
@@ -316,7 +379,7 @@ int main(int argc, char *argv[]){
       printfile(v, b);
     ref(c, v, status, pt, b);
   }
-  
+
   endwin();
   return 0;
 }
