@@ -132,24 +132,33 @@ void rightmove(Cursor &c, const Buffer &b, Viewport &v){
 
 void writerow(Cursor &c, Buffer &b, Viewport &v, int ch){
   b.rows[c.y].insert(c.x, 1, char(ch));
+  b.time = QUITIME; 
   b.dirt++;
   rightmove(c, b, v);
 }
 
 bool removechar(Cursor &c, Buffer &b, Viewport &v){
-  b.dirt++;
+  bool refresh = true;
   if(c.x > 0 && c.y >= 0 && c.y < b.rows.size()){
     leftmove(c, b, v);
     b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
+    b.time = QUITIME; 
+    refresh = false;
   }else if(c.y > 0){
     c.x = b.rows[c.y - 1].length();
     b.rows[c.y - 1] += b.rows[c.y];
     b.rows.erase(b.rows.begin() + c.y);
     upmove(c, b, v);
-    return true;
+    b.time = QUITIME; 
+  }else if(c.x == 0 && c.y == 0 && b.rows[0].empty() && b.rows.size() > 1){
+    b.rows.erase(b.rows.begin() + 0);
+  }else{
+    return false;
   }
 
-  return false;
+  b.dirt++;
+
+  return refresh;
 }
 
 void printfile(const Viewport &v, const Buffer &b){
@@ -162,12 +171,11 @@ void printfile(const Viewport &v, const Buffer &b){
 }
 
 void insertline(Cursor &c, Buffer &b, Viewport &v){
+  b.time = QUITIME; 
+  b.dirt++;
   b.rows.push_back("");
-  for(int i = b.rows.size() - 1; i > c.y; i--){
-    b.rows[i] = b.rows[i - 1];
-  }
-  
-  b.rows[c.y + 1] = b.rows[c.y].substr(c.x);
+
+  b.rows.insert(b.rows.begin() + c.y + 1, b.rows[c.y].substr(c.x));
   b.rows[c.y] = b.rows[c.y].substr(0, c.x);
   
   downmove(c, b, v);
@@ -187,13 +195,15 @@ void openfile(std::string filename, Buffer &b){
     file.close();
   }else{
     std::cerr << "erorr while opening file\n";
+    if(b.rows.empty())
+      b.rows.push_back("");
   }
 } 
 
 void handletab(Cursor &c, Buffer &b, Viewport &v){
+  b.time = QUITIME; 
   b.dirt++;
   b.rows[c.y].insert(c.x, TABSPACE, ' ');
-  printrow(c, b, v);
   for(int i = 0; i < TABSPACE; i++){
     rightmove(c, b, v);
   }
@@ -213,6 +223,7 @@ void handleinput(WINDOW *status){
   switch(ch){
     case '\t':
       handletab(c, b, v);
+      printrow(c, b, v);
       break;
     case KEY_BACKSPACE: 
       if(removechar(c, b, v)){
@@ -247,11 +258,12 @@ void handleinput(WINDOW *status){
     case KEY_DOWN:
       downmove(c, b, v);
       break;
+    case '\n':
+      insertline(c, b, v);
+      printfile(v, b);
+      break;
     default: 
-      if(ch == '\n'){
-        insertline(c, b, v);
-        printfile(v, b);
-      }else{
+      if(isprint(ch)){
         writerow(c, b, v, ch);
         printrow(c, b, v);
       }
@@ -300,7 +312,8 @@ int main(int argc, char *argv[]){
 
   ref(c, v, status, pt, b);
 
-  while(ch = getch()){
+  while(true){
+    ch = getch();
     povupdate = v.firstpov;
     handleinput(status);
     if(povupdate != v.firstpov) 
