@@ -202,9 +202,7 @@ void handletab(Cursor &c, Buffer &b, Viewport &v){
   b.time = QUITIME; 
   b.dirt++;
   b.rows[c.y].insert(c.x, TABSPACE, ' ');
-  for(int i = 0; i < TABSPACE; i++){
-    rightmove(c, b, v);
-  }
+  c.x += TABSPACE;
 }
 
 Cursor c;
