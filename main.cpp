@@ -139,23 +139,22 @@ void writerow(Cursor &c, Buffer &b, Viewport &v, int ch){
 
 bool removechar(Cursor &c, Buffer &b, Viewport &v){
   bool refresh = true;
-  if(c.x > 0 && c.y >= 0 && c.y < b.rows.size()){
+  if(c.x > 0 && c.y >= 0){
     leftmove(c, b, v);
     b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
-    b.time = QUITIME; 
     refresh = false;
   }else if(c.y > 0){
     c.x = b.rows[c.y - 1].length();
     b.rows[c.y - 1] += b.rows[c.y];
     b.rows.erase(b.rows.begin() + c.y);
     upmove(c, b, v);
-    b.time = QUITIME; 
-  }else if(c.x == 0 && c.y == 0 && b.rows[0].empty() && b.rows.size() > 1){
+  }else if(b.rows[0].empty() && b.rows.size() > 1){
     b.rows.erase(b.rows.begin() + 0);
   }else{
     return false;
   }
 
+  b.time = QUITIME; 
   b.dirt++;
 
   return refresh;
@@ -173,7 +172,6 @@ void printfile(const Viewport &v, const Buffer &b){
 void insertline(Cursor &c, Buffer &b, Viewport &v){
   b.time = QUITIME; 
   b.dirt++;
-  b.rows.push_back("");
 
   b.rows.insert(b.rows.begin() + c.y + 1, b.rows[c.y].substr(c.x));
   b.rows[c.y] = b.rows[c.y].substr(0, c.x);
