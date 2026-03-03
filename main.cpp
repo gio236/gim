@@ -294,6 +294,7 @@ int main(int argc, char *argv[]){
     wbkgd(status, COLOR_PAIR(1));
   }else{
     std::cerr << "the terminal does not support color\n";
+    return 1;
   }
 
 
