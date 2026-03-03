@@ -16,13 +16,11 @@ const int KEY_CTRL_RIGHT = 1001;
 const int KEY_CTRL_UP = 1002; 
 const int KEY_CTRL_DOWN = 1003; 
 
-#define DEFMESS "ctrl-w for writing, ctrl-x for exit"
+#define TABSPACE 2 // the number of space inserted if you press tab 
+#define DEFMESS "ctrl-w for writing, ctrl-x for exit" // the default messagge in the bottombar
 #define QUITIME 2 // times you want press before quit, with unsaved changes
-std::string statusmessage = "ctrl-w for writing, ctrl-x for exit";
 
-// TODO
-// commentare codice
-// secondo commento da gim btw
+std::string statusmessage = DEFMESS;
 
 struct Cursor{
   int y;
@@ -114,8 +112,6 @@ void downmove(Cursor &c, const Buffer &b, Viewport &v){
   }
 }
 
-
-
 void leftmove(Cursor &c, const Buffer &b, Viewport &v){
   if(c.x - 1 >= 0){
     c.x--;
@@ -194,6 +190,15 @@ void openfile(std::string filename, Buffer &b){
   }
 } 
 
+void handletab(Cursor &c, Buffer &b, Viewport &v){
+  b.dirt++;
+  b.rows[c.y].insert(c.x, TABSPACE, ' ');
+  printrow(c, b, v);
+  for(int i = 0; i < TABSPACE; i++){
+    rightmove(c, b, v);
+  }
+}
+
 Cursor c;
 Buffer b;
 Viewport v;
@@ -206,6 +211,9 @@ std::string pt;
 
 void handleinput(WINDOW *status){
   switch(ch){
+    case '\t':
+      handletab(c, b, v);
+      break;
     case KEY_BACKSPACE: 
       if(removechar(c, b, v)){
         printfile(v, b);
@@ -249,7 +257,6 @@ void handleinput(WINDOW *status){
       }
    }
 }
-
 
 int main(int argc, char *argv[]){
 
