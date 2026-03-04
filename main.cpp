@@ -139,14 +139,8 @@ void downmove(Cursor &c, const Buffer &b, Viewport &v){
 
 void leftmove(Cursor &c, const Buffer &b, Viewport &v){
   if(c.x - 1 >= 0){
-
-    if(b.rows[c.y][c.x - 1] == '\t'){
-      c.mx -= TABSPACE - (c.mx % TABSPACE);
-    }else{
-      c.mx--;
-    }
-
     c.x--;
+    desiredcols(c, b);
   }else if(c.y > 0){
     upmove(c, b, v);
     c.x = b.rows[c.y].length();
@@ -156,14 +150,8 @@ void leftmove(Cursor &c, const Buffer &b, Viewport &v){
 
 void rightmove(Cursor &c, const Buffer &b, Viewport &v){
   if(c.x + 1 <= b.rows[c.y].length()){
-
-    if(b.rows[c.y][c.x] == '\t'){
-      c.mx += TABSPACE - (c.mx % TABSPACE);
-    }else{
-      c.mx++;
-    }
-
     c.x++;
+    desiredcols(c, b);
   }else if(c.y + 1 < b.rows.size()){
     downmove(c, b, v);
     c.x = 0;
@@ -306,6 +294,7 @@ void handleinput(WINDOW *status){
         statusmessage.assign(buffer);
         b.time--;
       }else{
+        delwin(status);
         endwin();
         exit(0);
       }
