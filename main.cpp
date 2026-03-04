@@ -49,7 +49,7 @@ void desiredcols(Cursor &c, const Buffer &b){
   for(int i = 0; i < c.x; i++){
     if(b.rows[c.y][i] == '\t'){
       c.mx += TABSPACE - (c.mx % TABSPACE);
-    }else{
+    } else {
       c.mx++;
     }
   }
@@ -142,9 +142,8 @@ void leftmove(Cursor &c, const Buffer &b, Viewport &v){
     c.x--;
     desiredcols(c, b);
   }else if(c.y > 0){
+    c.x = b.rows[c.y - 1].length();
     upmove(c, b, v);
-    c.x = b.rows[c.y].length();
-    c.mx = b.rows[c.y].length();
   }
 }
 
@@ -178,7 +177,6 @@ bool removechar(Cursor &c, Buffer &b, Viewport &v){
     refresh = false;
   }else if(c.y > 0){
     c.x = b.rows[c.y - 1].length();
-    c.mx = b.rows[c.y - 1].length();
     b.rows[c.y - 1] += b.rows[c.y];
     b.rows.erase(b.rows.begin() + c.y);
     upmove(c, b, v);
