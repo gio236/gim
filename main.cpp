@@ -49,7 +49,7 @@ void desiredcols(Cursor &c, const Buffer &b){
   for(int i = 0; i < c.x; i++){
     if(b.rows[c.y][i] == '\t'){
       c.mx += TABSPACE - (c.mx % TABSPACE);
-    } else {
+    }else{
       c.mx++;
     }
   }
