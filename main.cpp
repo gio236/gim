@@ -39,6 +39,17 @@ struct Buffer{
     int time = QUITIME;
 };
 
+int byteslen(const Buffer &b){
+    /* this calculate how many char are in the vector */
+    int bytes = b.rows.size(); 
+    /* bytes is initialized with the size because of the newline that there is for each lines */
+    for(int i = 0; i < b.rows.size(); i++){
+        bytes += b.rows[i].length();
+    }
+    bytes = bytes * sizeof(char); 
+    return bytes;
+}
+
 void desiredcols(Cursor &c, const Buffer &b){
     int len = b.rows[c.y].length();
     if(c.x > len){
@@ -287,17 +298,12 @@ void handleinput(WINDOW *status){
             break;
         case SAVE_KEY: {
             /* 
-               As with quit, I created the message string with snprintf
+               As with quit, I create the message string with snprintf
                with the desired argument and then sent it to statusmessage.
             */
             char buffer[100];
-            unsigned int mem = 0;
-            /* this calculate how many char are in the vector */
-            for(int i = 0; i < b.rows.size(); i++)
-                mem += b.rows[i].length();
-            mem += b.rows.size(); /* this add the newline char */
             /* this shows how many bytes are written in memory when the button is pressed */
-            std::snprintf(buffer, sizeof(buffer), "%d bytes written on disk", mem * sizeof(char)); 
+            std::snprintf(buffer, sizeof(buffer), "%d bytes written on disk", byteslen(b)); 
             statusmessage.assign(buffer);
             savefile(b, pt);
             break;
