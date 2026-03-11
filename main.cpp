@@ -135,6 +135,7 @@ void printrow(const Cursor &c, const Buffer &b, const Viewport &v){
 void upmove(Cursor &c,const Buffer &b, Viewport &v){
     if(c.y - 1 >= 0){
         if((c.y - v.firstpov) == 0 && c.y > 0){
+            wscrl(stdscr, -1);
             v.firstpov--;
         }
         c.y--;
@@ -145,6 +146,7 @@ void upmove(Cursor &c,const Buffer &b, Viewport &v){
 void downmove(Cursor &c, const Buffer &b, Viewport &v){
     if(c.y + 1 < b.rows.size()){
         if((c.y - v.firstpov) == LINES - 2){
+            wscrl(stdscr, 1);
             v.firstpov++; 
         }
         c.y++;
@@ -368,12 +370,19 @@ int main(int argc, char *argv[]){
 
     init();
 
+    idlok(stdscr, TRUE);
+    scrollok(stdscr, TRUE);
+
+
     define_key("\033[1;5A", KEY_CTRL_UP);
     define_key("\033[1;5B", KEY_CTRL_DOWN);
     define_key("\033[1;5C", KEY_CTRL_RIGHT);
     define_key("\033[1;5D", KEY_CTRL_LEFT);
 
     printfile(v, b);
+
+    //wscrl(stdscr, 1); /* 1 // -1 */
+
 
     WINDOW *status = newwin(1, COLS, LINES - 1, 0); /* statusbar */
     if(has_colors()) {
@@ -392,8 +401,10 @@ int main(int argc, char *argv[]){
         ch = getch();
         povupdate = v.firstpov;
         handleinput(status);
-        if(povupdate != v.firstpov) 
-            printfile(v, b);
+        if(povupdate != v.firstpov){
+            move(c.y, c.x);
+            printrow(c, b, v);
+        }
         ref(c, v, status, pt, b);
     }
 
