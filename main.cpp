@@ -69,7 +69,11 @@ void desiredcols(Cursor &c, const Buffer &b){
 
 void setmessage(const Cursor &c, WINDOW *status, const std::string pt, const Buffer &b){
     werase(status);
-    mvwprintw(status, 0, 0, "%s - %d/%d lines", pt.c_str(), c.y + 1, b.rows.size());
+    /* if there is some dirty lines, this will advise the user */
+    if(b.dirt)
+        mvwprintw(status, 0, 0, "%s - %d/%d lines (modified)", pt.c_str(), c.y + 1, b.rows.size());
+    else
+        mvwprintw(status, 0, 0, "%s - %d/%d lines", pt.c_str(), c.y + 1, b.rows.size());
     mvwprintw(status, 0, COLS - 1 - statusmessage.length(), "%s", statusmessage.c_str());
     statusmessage = DEFMESS;
 }
@@ -207,10 +211,12 @@ bool removechar(Cursor &c, Buffer &b, Viewport &v){
 }
 
 void printfile(const Viewport &v, const Buffer &b){
-    clear();
+    /* clear(); su alcuni terminali puo provocare flickering */
     int temp = 0;
 
     for(int i = v.firstpov; i < b.rows.size() && temp < LINES - 1; i++){ 
+        move(temp, 0);
+        clrtoeol();
         int screen_col = 0;  
         for(int buf_index = 0; buf_index < b.rows[i].length() && screen_col < COLS - 1; buf_index++){
             char ch = b.rows[i][buf_index];
@@ -228,6 +234,7 @@ void printfile(const Viewport &v, const Buffer &b){
         }
         temp++;
     }
+    refresh();
 }
 
 void insertline(Cursor &c, Buffer &b, Viewport &v){
