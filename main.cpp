@@ -216,12 +216,6 @@ void printfile(const Viewport &v, const Buffer &b){
             char ch = b.rows[i][buf_index];
 
             if(ch == '\t'){
-                /*
-                    TABSPACE indicates the space where the tab will appear.
-                    The calculation in parentheses gives us the space since the last tab stop.
-                    So all calculations give us the spaces we want to add.
-                    To move to the next tab stop.
-                */
                 int spaces = TABSPACE - (screen_col % TABSPACE); 
                 for(int s = 0; s < spaces && screen_col < COLS - 1; s++){
                     mvaddch(temp, screen_col, ' ');
