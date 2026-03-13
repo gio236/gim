@@ -67,7 +67,6 @@ void desiredcols(Cursor &c, const Buffer &b){
 
   if(c.mx >= COLS)
     c.mx = COLS - 1;
-
 }
 
 void setmessage(const Cursor &c, WINDOW *status, const std::string pt, const Buffer &b){
@@ -137,6 +136,15 @@ void printrow(const Cursor &c, const Buffer &b, const Viewport &v){
   }
 }
 
+void orizcontrol(Cursor &c, const Buffer &b, Viewport &v){
+  if(c.x - COLS + 1 > 0){
+    v.orizoff = c.x - COLS + 1;
+    printrow(c, b, v);
+  }else{
+    v.orizoff = 0;
+  }
+}
+
 void upmove(Cursor &c,const Buffer &b, Viewport &v){
   if(c.y - 1 >= 0){
     if((c.y - v.firstpov) == 0 && c.y > 0){
@@ -145,7 +153,7 @@ void upmove(Cursor &c,const Buffer &b, Viewport &v){
     }
     c.y--;
     desiredcols(c, b);
-    v.orizoff = 0;
+    orizcontrol(c, b, v);
   }
 }
 
@@ -157,7 +165,7 @@ void downmove(Cursor &c, const Buffer &b, Viewport &v){
     }
     c.y++;
     desiredcols(c, b);
-    v.orizoff = 0;
+    orizcontrol(c, b, v);
   }
 }
 
@@ -172,10 +180,6 @@ void leftmove(Cursor &c, const Buffer &b, Viewport &v){
   }else if(c.y > 0){
     c.x = b.rows[c.y - 1].length();
     upmove(c, b, v);
-    if(c.x - COLS + 1 > 0){
-      v.orizoff = c.x - COLS + 1;
-      printrow(c, b, v);
-    }
   }
 }
 
@@ -208,7 +212,7 @@ bool removechar(Cursor &c, Buffer &b, Viewport &v){
      this will ensure that the scren will be cleared 
      so will print the all file 
      otherwise reprint the specified row
-     */
+  */
 
   if(c.x > 0 && c.y >= 0){
     leftmove(c, b, v);
@@ -219,6 +223,7 @@ bool removechar(Cursor &c, Buffer &b, Viewport &v){
     b.rows[c.y - 1] += b.rows[c.y];
     b.rows.erase(b.rows.begin() + c.y);
     upmove(c, b, v);
+
   }else if(b.rows[0].empty() && b.rows.size() > 1){
     b.rows.erase(b.rows.begin() + 0);
   }
@@ -229,26 +234,28 @@ bool removechar(Cursor &c, Buffer &b, Viewport &v){
   return refresh;
 }
 
-void printfile(const Viewport &v, const Buffer &b){
+void printfile(const Cursor &c, const Buffer &b, const Viewport &v){
   clear(); 
   int temp = 0;
 
   for(int i = v.firstpov; i < b.rows.size() && temp < LINES - 1; i++){ 
     int screen_col = 0;  
-    for(int buf_index = 0; buf_index < b.rows[i].length() && screen_col < COLS - 1; buf_index++){
-      char ch = b.rows[i][buf_index];
-
-      if(ch == '\t'){
-        int spaces = TABSPACE - (screen_col % TABSPACE); 
-        for(int s = 0; s < spaces && screen_col < COLS - 1; s++){
-          mvaddch(temp, screen_col, ' ');
+    if(i == c.y)
+      printrow(c, b, v);
+    else
+      for(int buf_index = 0; buf_index < b.rows[i].length() && screen_col < COLS - 1; buf_index++){ char ch = b.rows[i][buf_index];
+         
+        if(ch == '\t'){
+          int spaces = TABSPACE - (screen_col % TABSPACE); 
+          for(int s = 0; s < spaces && screen_col < COLS - 1; s++){
+            mvaddch(temp, screen_col, ' ');
+            screen_col++;
+          }
+        }else{
+          mvaddch(temp, screen_col, ch);
           screen_col++;
         }
-      }else{
-        mvaddch(temp, screen_col, ch);
-        screen_col++;
       }
-    }
     temp++;
   }
   refresh();
@@ -300,7 +307,7 @@ void handleinput(Cursor &c, Buffer &b, Viewport &v, WINDOW *status, std::string 
       break;
     case KEY_BACKSPACE: 
       if(removechar(c, b, v)){
-        printfile(v, b);
+        printfile(c, b, v);
       }else{
         printrow(c, b, v);
       }
@@ -343,7 +350,7 @@ void handleinput(Cursor &c, Buffer &b, Viewport &v, WINDOW *status, std::string 
                    break;
     case '\n':
                    insertline(c, b, v);
-                   printfile(v, b);
+                   printfile(c, b, v);
                    break;
     default: 
                    if(isprint(ch)){
@@ -389,7 +396,7 @@ int main(int argc, char *argv[]){
   define_key("\033[1;5C", KEY_CTRL_RIGHT);
   define_key("\033[1;5D", KEY_CTRL_LEFT);
 
-  printfile(v, b);
+  printfile(c, b, v);
 
   //wscrl(stdscr, 1); /* 1 // -1 */
 
