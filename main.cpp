@@ -16,22 +16,20 @@ const int KEY_CTRL_RIGHT = 1001;
 const int KEY_CTRL_UP = 1002; 
 const int KEY_CTRL_DOWN = 1003; 
 
-#define TABSPACE 4 /* the number of space inserted if you press tab */
-#define DEFMESS "non farmelo ripetere 2 volte, vai subito a scaricare gim" /* the default messagge in the bottombar */
-#define QUITIME 2 /* times you want press before quit, with unsaved changes */
+#define TABSPACE 4
+#define DEFMESS "ctrl-w for writing, ctrl-x for exit"
+#define QUITIME 2
 
 std::string statusmessage = DEFMESS;
 
 struct Cursor{
   int y;
   int x, mx; 
-  /* x is for acess to the vector */
-  /* mx is the cursor position in the screen */
 };
 
 struct Viewport{
   int firstpov;
-  int orizoff = 0;
+  int orizoff = 0; /* offset in colonne schermo, non in caratteri */
 };
 
 struct Buffer{
@@ -41,48 +39,45 @@ struct Buffer{
 };
 
 int byteslen(const Buffer &b){
-  /* this calculate how many char are in the vector */
   int bytes = b.rows.size(); 
-  /* bytes is initialized with the size because of the newline that there is for each lines */
-  for(int i = 0; i < b.rows.size(); i++){
+  for(int i = 0; i < (int)b.rows.size(); i++){
     bytes += b.rows[i].length();
   }
   return bytes;
 }
 
-void desiredcols(Cursor &c, const Buffer &b){
+int calcvcol(const std::string &row, int x){
+  /* calcola la colonna virtuale assoluta nella riga fino a x */
+  int vcol = 0;
+  for(int i = 0; i < x; i++){
+    if(row[i] == '\t')
+      vcol += TABSPACE - (vcol % TABSPACE);
+    else
+      vcol++;
+  }
+  return vcol;
+}
+
+void desiredcols(Cursor &c, const Buffer &b, const Viewport &v){
   int len = b.rows[c.y].length();
-  if(c.x > len){
-    c.x = len;
-  }
+  if(c.x > len) c.x = len;
 
-  c.mx = 0;
-  for(int i = 0; i < c.x; i++){
-    if(b.rows[c.y][i] == '\t'){
-      c.mx += TABSPACE - (c.mx % TABSPACE);
-    } else {
-      c.mx++;
-    }
-  }
-
-  if(c.mx >= COLS)
-    c.mx = COLS - 1;
+  int vcol = calcvcol(b.rows[c.y], c.x);
+  c.mx = vcol - v.orizoff;
 }
 
 void setmessage(const Cursor &c, WINDOW *status, const std::string pt, const Buffer &b){
   werase(status);
-  /* if there is some dirty lines, this will advise the user */
   if(b.dirt)
-    mvwprintw(status, 0, 0, "%s - %d/%d lines (modified)", pt.c_str(), c.y + 1, b.rows.size());
+    mvwprintw(status, 0, 0, "%s - %d/%d lines (modified)", pt.c_str(), c.y + 1, (int)b.rows.size());
   else
-    mvwprintw(status, 0, 0, "%s - %d/%d lines", pt.c_str(), c.y + 1, b.rows.size());
+    mvwprintw(status, 0, 0, "%s - %d/%d lines", pt.c_str(), c.y + 1, (int)b.rows.size());
   mvwprintw(status, 0, COLS - 1 - statusmessage.length(), "%s", statusmessage.c_str());
   statusmessage = DEFMESS;
 }
 
 void ref(const Cursor &c, const Viewport &v, WINDOW *status, const std::string &pt, const Buffer &b){
   setmessage(c, status, pt, b);
-
   refresh();
   wrefresh(status);
   move((c.y - v.firstpov), c.mx);
@@ -98,7 +93,7 @@ void disableFlowControl(){
 void savefile(Buffer &b, const std::string &pt){
   std::ofstream file(pt);
   if(file.is_open()){
-    for(int i = 0; i < b.rows.size(); i++){
+    for(int i = 0; i < (int)b.rows.size(); i++){
       file << b.rows[i] << std::endl;
     }
     file.close();
@@ -121,62 +116,75 @@ void printrow(const Cursor &c, const Buffer &b, const Viewport &v){
   int row = c.y - v.firstpov;
   move(row, 0);
   clrtoeol();
+
+  int vcol = 0;
   int screen_col = 0;
-  for(int i = v.orizoff; i < b.rows[c.y].length() && screen_col < COLS - 1; i++){
+
+  for(int i = 0; i < (int)b.rows[c.y].length() && screen_col < COLS - 1; i++){
     if(b.rows[c.y][i] == '\t'){
-      int spaces = (TABSPACE - (screen_col % TABSPACE));
-      for(int s = 0; s < spaces && screen_col < COLS - 1; s++){
-        mvaddch(row, screen_col, ' ');
-        screen_col++;
-      }    
+      int spaces = TABSPACE - (vcol % TABSPACE);
+      int vend = vcol + spaces;
+
+      if(vend <= v.orizoff){
+        /* tab completamente fuori a sinistra, salta */
+        vcol = vend;
+        continue;
+      }
+      /* tab parzialmente o totalmente visibile */
+      int vis_start = (vcol < v.orizoff) ? v.orizoff : vcol;
+      int vis_spaces = vend - vis_start;
+      for(int s = 0; s < vis_spaces && screen_col < COLS - 1; s++)
+        mvaddch(row, screen_col++, ' ');
+      vcol = vend;
     }else{
-      mvaddch(row, screen_col, b.rows[c.y][i]);
-      screen_col++;
+      if(vcol >= v.orizoff)
+        mvaddch(row, screen_col++, b.rows[c.y][i]);
+      vcol++;
     }
   }
 }
 
 void orizcontrol(Cursor &c, const Buffer &b, Viewport &v){
-  if(c.x - COLS + 1 > 0){
-    v.orizoff = c.x - COLS + 1;
-    printrow(c, b, v);
-  }else{
+  int vcol = calcvcol(b.rows[c.y], c.x);
+
+  if(vcol >= COLS - 1)
+    v.orizoff = vcol - COLS + 2;
+  else
     v.orizoff = 0;
-  }
+
+  c.mx = vcol - v.orizoff;
+  printrow(c, b, v);
 }
 
-void upmove(Cursor &c,const Buffer &b, Viewport &v){
+void upmove(Cursor &c, const Buffer &b, Viewport &v){
   if(c.y - 1 >= 0){
     if((c.y - v.firstpov) == 0 && c.y > 0){
       wscrl(stdscr, -1);
       v.firstpov--;
     }
     c.y--;
-    desiredcols(c, b);
+    desiredcols(c, b, v);
     orizcontrol(c, b, v);
   }
 }
 
 void downmove(Cursor &c, const Buffer &b, Viewport &v){
-  if(c.y + 1 < b.rows.size()){
+  if(c.y + 1 < (int)b.rows.size()){
     if((c.y - v.firstpov) == LINES - 2){
       wscrl(stdscr, 1);
       v.firstpov++; 
     }
     c.y++;
-    desiredcols(c, b);
+    desiredcols(c, b, v);
     orizcontrol(c, b, v);
   }
 }
 
 void leftmove(Cursor &c, const Buffer &b, Viewport &v){
   if(c.x - 1 >= 0){
-    if(c.x >= COLS){
-      v.orizoff--;
-      printrow(c, b, v);
-    }
     c.x--;
-    desiredcols(c, b);
+    desiredcols(c, b, v);
+    orizcontrol(c, b, v);
   }else if(c.y > 0){
     c.x = b.rows[c.y - 1].length();
     upmove(c, b, v);
@@ -184,14 +192,11 @@ void leftmove(Cursor &c, const Buffer &b, Viewport &v){
 }
 
 void rightmove(Cursor &c, const Buffer &b, Viewport &v){
-  if(c.x + 1 <= b.rows[c.y].length()){
-    if(c.mx == COLS - 1){
-      v.orizoff++;  
-      printrow(c, b, v);
-    }
+  if(c.x + 1 <= (int)b.rows[c.y].length()){
     c.x++;
-    desiredcols(c, b);
-  }else if(c.y + 1 < b.rows.size()){
+    desiredcols(c, b, v);
+    orizcontrol(c, b, v);
+  }else if(c.y + 1 < (int)b.rows.size()){
     downmove(c, b, v);
     c.x = 0;
     c.mx = 0;
@@ -206,24 +211,17 @@ void writerow(Cursor &c, Buffer &b, Viewport &v, int ch){
 }
 
 bool removechar(Cursor &c, Buffer &b, Viewport &v){
-  bool refresh = true; 
-  /*
-     if refresh is returned as true 
-     this will ensure that the scren will be cleared 
-     so will print the all file 
-     otherwise reprint the specified row
-  */
+  bool needfullrefresh = true; 
 
   if(c.x > 0 && c.y >= 0){
     leftmove(c, b, v);
     b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
-    refresh = false;
+    needfullrefresh = false;
   }else if(c.y > 0){
     c.x = b.rows[c.y - 1].length();
     b.rows[c.y - 1] += b.rows[c.y];
     b.rows.erase(b.rows.begin() + c.y);
     upmove(c, b, v);
-
   }else if(b.rows[0].empty() && b.rows.size() > 1){
     b.rows.erase(b.rows.begin() + 0);
   }
@@ -231,31 +229,34 @@ bool removechar(Cursor &c, Buffer &b, Viewport &v){
   b.time = QUITIME; 
   b.dirt++;
 
-  return refresh;
+  return needfullrefresh;
 }
 
 void printfile(const Cursor &c, const Buffer &b, const Viewport &v){
   clear(); 
   int temp = 0;
 
-  for(int i = v.firstpov; i < b.rows.size() && temp < LINES - 1; i++){ 
-    int screen_col = 0;  
-    if(i == c.y)
+  for(int i = v.firstpov; i < (int)b.rows.size() && temp < LINES - 1; i++){ 
+    if(i == c.y){
       printrow(c, b, v);
-    else
-      for(int buf_index = 0; buf_index < b.rows[i].length() && screen_col < COLS - 1; buf_index++){ char ch = b.rows[i][buf_index];
-         
+    } else {
+      /* le righe diverse da c.y non hanno scroll orizzontale */
+      int vcol = 0;
+      int screen_col = 0;
+      for(int j = 0; j < (int)b.rows[i].length() && screen_col < COLS - 1; j++){
+        char ch = b.rows[i][j];
         if(ch == '\t'){
-          int spaces = TABSPACE - (screen_col % TABSPACE); 
+          int spaces = TABSPACE - (vcol % TABSPACE);
           for(int s = 0; s < spaces && screen_col < COLS - 1; s++){
-            mvaddch(temp, screen_col, ' ');
-            screen_col++;
+            mvaddch(temp, screen_col++, ' ');
           }
-        }else{
-          mvaddch(temp, screen_col, ch);
-          screen_col++;
+          vcol += spaces;
+        } else {
+          mvaddch(temp, screen_col++, ch);
+          vcol++;
         }
       }
+    }
     temp++;
   }
   refresh();
@@ -271,6 +272,7 @@ void insertline(Cursor &c, Buffer &b, Viewport &v){
   downmove(c, b, v);
   c.x = 0;
   c.mx = 0;
+  v.orizoff = 0;
 }
 
 void openfile(std::string filename, Buffer &b){
@@ -298,7 +300,6 @@ void handletab(Cursor &c, Buffer &b, Viewport &v){
   rightmove(c, b, v);
 }
 
-
 void handleinput(Cursor &c, Buffer &b, Viewport &v, WINDOW *status, std::string pt, int ch){
   switch(ch){
     case '\t':
@@ -313,12 +314,7 @@ void handleinput(Cursor &c, Buffer &b, Viewport &v, WINDOW *status, std::string 
       }
       break;
     case SAVE_KEY: {
-                     /* 
-                        As with quit, I create the message string with snprintf
-                        with the desired argument and then sent it to statusmessage.
-                        */
                      char buffer[100];
-                     /* this shows how many bytes are written in memory when the button is pressed */
                      std::snprintf(buffer, sizeof(buffer), "%d bytes written on disk", byteslen(b)); 
                      statusmessage.assign(buffer);
                      savefile(b, pt);
@@ -374,6 +370,7 @@ int main(int argc, char *argv[]){
   c.mx = 0;
   c.y = 0;
   v.firstpov = 0;
+  v.orizoff = 0;
   b.dirt = 0;
 
   if(argc > 1){
@@ -388,7 +385,6 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
-
   init();
 
   define_key("\033[1;5A", KEY_CTRL_UP);
@@ -398,10 +394,7 @@ int main(int argc, char *argv[]){
 
   printfile(c, b, v);
 
-  //wscrl(stdscr, 1); /* 1 // -1 */
-
-
-  WINDOW *status = newwin(1, COLS, LINES - 1, 0); /* statusbar */
+  WINDOW *status = newwin(1, COLS, LINES - 1, 0);
   if(has_colors()) {
     start_color();
     init_pair(1, COLOR_BLACK, COLOR_WHITE);
@@ -410,7 +403,6 @@ int main(int argc, char *argv[]){
     std::cerr << "the terminal does not support color\n";
     return 1;
   }
-
 
   ref(c, v, status, pt, b);
 
