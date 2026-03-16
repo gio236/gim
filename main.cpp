@@ -11,12 +11,13 @@
 
 const int SAVE_KEY = 23; /* ctrl+w */
 const int QUIT_KEY = 24; /* ctrl+x */
+
 const int KEY_CTRL_LEFT = 1000; 
 const int KEY_CTRL_RIGHT = 1001;
 const int KEY_CTRL_UP = 1002; 
 const int KEY_CTRL_DOWN = 1003; 
 
-#define TABSPACE 4
+#define TABSPACE 2
 #define DEFMESS "ctrl-w for writing, ctrl-x for exit"
 #define QUITIME 2
 
@@ -36,6 +37,20 @@ struct Buffer{
   std::vector<std::string> rows;
   int dirt;
   int time = QUITIME;
+
+  void resetvalue(void){
+    dirt = 0; 
+    time = QUITIME;
+  }
+
+  /* verra chiamata quando si modifica il file */
+  /* perche vogliamo resettare le chiamate al tasto di uscita */
+  /* ed incrementare le righe sporche ==> "modificate" */
+  void changestatus(void){
+    dirt++;
+    time = QUITIME;
+  }
+
 };
 
 int byteslen(const Buffer &b){
@@ -46,7 +61,7 @@ int byteslen(const Buffer &b){
   return bytes;
 }
 
-int calcvcol(const std::string &row, int x){
+int calcvcol(const std::string &row, int &x){
   /* calcola la colonna virtuale assoluta nella riga fino a x */
   int vcol = 0;
   for(int i = 0; i < x; i++){
@@ -97,8 +112,9 @@ void savefile(Buffer &b, const std::string &pt){
       file << b.rows[i] << std::endl;
     }
     file.close();
-    b.dirt = 0;
-    b.time = QUITIME;
+    b.resetvalue();
+    // b.dirt = 0;
+    // b.time = QUITIME;
   }
 }
 
@@ -205,29 +221,29 @@ void rightmove(Cursor &c, const Buffer &b, Viewport &v){
 
 void writerow(Cursor &c, Buffer &b, Viewport &v, int ch){
   b.rows[c.y].insert(c.x, 1, char(ch));
-  b.time = QUITIME; 
-  b.dirt++;
   rightmove(c, b, v);
+
+  b.changestatus();
 }
 
 bool removechar(Cursor &c, Buffer &b, Viewport &v){
-  bool needfullrefresh = true; 
+  bool needfullrefresh = false; 
 
   if(c.x > 0 && c.y >= 0){
     leftmove(c, b, v);
     b.rows[c.y].erase(b.rows[c.y].begin() + c.x);
-    needfullrefresh = false;
   }else if(c.y > 0){
     c.x = b.rows[c.y - 1].length();
     b.rows[c.y - 1] += b.rows[c.y];
     b.rows.erase(b.rows.begin() + c.y);
     upmove(c, b, v);
+    needfullrefresh = true;
   }else if(b.rows[0].empty() && b.rows.size() > 1){
     b.rows.erase(b.rows.begin() + 0);
+    needfullrefresh = true;
   }
 
-  b.time = QUITIME; 
-  b.dirt++;
+  b.changestatus();
 
   return needfullrefresh;
 }
@@ -263,8 +279,7 @@ void printfile(const Cursor &c, const Buffer &b, const Viewport &v){
 }
 
 void insertline(Cursor &c, Buffer &b, Viewport &v){
-  b.time = QUITIME; 
-  b.dirt++;
+  b.changestatus();
 
   b.rows.insert(b.rows.begin() + c.y + 1, b.rows[c.y].substr(c.x));
   b.rows[c.y] = b.rows[c.y].substr(0, c.x);
@@ -294,8 +309,7 @@ void openfile(std::string filename, Buffer &b){
 } 
 
 void handletab(Cursor &c, Buffer &b, Viewport &v){
-  b.time = QUITIME; 
-  b.dirt++;
+  b.changestatus();
   b.rows[c.y].insert(c.x, 1, '\t');
   rightmove(c, b, v);
 }
@@ -313,46 +327,50 @@ void handleinput(Cursor &c, Buffer &b, Viewport &v, WINDOW *status, std::string 
         printrow(c, b, v);
       }
       break;
-    case SAVE_KEY: {
-                     char buffer[100];
-                     std::snprintf(buffer, sizeof(buffer), "%d bytes written on disk", byteslen(b)); 
-                     statusmessage.assign(buffer);
-                     savefile(b, pt);
-                     break;
-                   }
     case KEY_LEFT:
-                   leftmove(c, b, v);
-                   break;
+      leftmove(c, b, v);
+      break;
     case KEY_RIGHT:
-                   rightmove(c, b, v);
-                   break;
+      rightmove(c, b, v);
+      break;
     case QUIT_KEY:
-                   if(b.dirt && b.time){
-                     char buffer[100];
-                     std::snprintf(buffer, sizeof(buffer), "WARNING you have unsaved change press ctrl-x %d more times for quit", b.time);
-                     statusmessage.assign(buffer);
-                     b.time--;
-                   }else{
-                     delwin(status);
-                     endwin();
-                     exit(0);
-                   }
-                   break;
+    {
+      if(b.dirt && b.time){
+        char buffer[100];
+        std::snprintf(buffer, sizeof(buffer), "WARNING you have unsaved change press ctrl-x %d more times for quit", b.time);
+        statusmessage.assign(buffer);
+        b.time--;
+      }else{
+        delwin(status);
+        endwin();
+        exit(0);
+      }
+      break;
+    }
     case KEY_UP:
-                   upmove(c, b, v);
-                   break;
+      upmove(c, b, v);
+      break;
     case KEY_DOWN:
-                   downmove(c, b, v);
-                   break;
+      downmove(c, b, v);
+      break;
     case '\n':
-                   insertline(c, b, v);
-                   printfile(c, b, v);
-                   break;
+      insertline(c, b, v);
+      printfile(c, b, v);
+      break;
+
+    case SAVE_KEY:
+    {
+      char buffer[100];
+      std::snprintf(buffer, sizeof(buffer), "%d bytes written on disk", byteslen(b)); 
+      statusmessage.assign(buffer);
+      savefile(b, pt);
+      break;
+    }
     default: 
-                   if(isprint(ch)){
-                     writerow(c, b, v, ch);
-                     printrow(c, b, v);
-                   }
+      if(isprint(ch)){
+        writerow(c, b, v, ch);
+        printrow(c, b, v);
+      }
   }
 }
 
@@ -381,7 +399,7 @@ int main(int argc, char *argv[]){
       b.rows.push_back("");
     }
   }else{
-    std::cerr << "Usage : gim <filename>\n";
+    std::cerr << "Usage: gim <filename>\n";
     return 1;
   }
 
