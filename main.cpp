@@ -9,50 +9,18 @@
 #include <ncurses.h>
 #include <filesystem>
 
-const int SAVE_KEY = 23; /* ctrl+w */
-const int QUIT_KEY = 24; /* ctrl+x */
+/* headers per definizione delle struct */
+#include "struct/Cursorstruct.hpp"
+#include "struct/Viewportstruct.hpp"
+#include "struct/Bufferstruct.hpp"
 
-const int KEY_CTRL_LEFT = 1000; 
-const int KEY_CTRL_RIGHT = 1001;
-const int KEY_CTRL_UP = 1002; 
-const int KEY_CTRL_DOWN = 1003; 
+/* headers per costanti */
+#include "def/def.hpp"
 
-#define TABSPACE 2
-#define DEFMESS "ctrl-w for writing, ctrl-x for exit"
-#define QUITIME 2
-
+/* DEFMESS ==> defualtmessagge definito in def */
 std::string statusmessage = DEFMESS;
 
-struct Cursor{
-  int y;
-  int x, mx; 
-};
-
-struct Viewport{
-  int firstpov;
-  int orizoff = 0; /* offset in colonne schermo, non in caratteri */
-};
-
-struct Buffer{
-  std::vector<std::string> rows;
-  int dirt;
-  int time = QUITIME;
-
-  void resetvalue(void){
-    dirt = 0; 
-    time = QUITIME;
-  }
-
-  /* verra chiamata quando si modifica il file */
-  /* perche vogliamo resettare le chiamate al tasto di uscita */
-  /* ed incrementare le righe sporche ==> "modificate" */
-  void changestatus(void){
-    dirt++;
-    time = QUITIME;
-  }
-
-};
-
+/* conta quanti bytes occupa il file */
 int byteslen(const Buffer &b){
   int bytes = b.rows.size(); 
   for(int i = 0; i < (int)b.rows.size(); i++){
@@ -61,8 +29,8 @@ int byteslen(const Buffer &b){
   return bytes;
 }
 
+/* calcola la colonna virtuale assoluta nella riga fino a x */
 int calcvcol(const std::string &row, int &x){
-  /* calcola la colonna virtuale assoluta nella riga fino a x */
   int vcol = 0;
   for(int i = 0; i < x; i++){
     if(row[i] == '\t')
@@ -105,6 +73,28 @@ void disableFlowControl(){
   tcsetattr(STDIN_FILENO, TCSANOW, &t);
 }
 
+void disableJobControlSignals(){
+  signal(SIGINT, SIG_IGN);   /* ignora Ctrl+C */
+  signal(SIGTSTP, SIG_IGN);  /* ignora Ctrl+Z */
+  signal(SIGQUIT, SIG_IGN);  /* ignora Ctrl+\ */
+}
+
+void init(){
+  initscr();         
+  noecho();         
+  keypad(stdscr, TRUE);
+  cbreak();
+  disableFlowControl();
+  idlok(stdscr, TRUE);
+  scrollok(stdscr, TRUE);
+}
+
+void initall(){
+  disableFlowControl();
+  disableJobControlSignals();
+  init();
+}
+
 void savefile(Buffer &b, const std::string &pt){
   std::ofstream file(pt);
   if(file.is_open()){
@@ -116,16 +106,6 @@ void savefile(Buffer &b, const std::string &pt){
     // b.dirt = 0;
     // b.time = QUITIME;
   }
-}
-
-void init(){
-  initscr();         
-  noecho();         
-  keypad(stdscr, TRUE);
-  cbreak();
-  disableFlowControl();
-  idlok(stdscr, TRUE);
-  scrollok(stdscr, TRUE);
 }
 
 void printrow(const Cursor &c, const Buffer &b, const Viewport &v){
@@ -376,6 +356,7 @@ void handleinput(Cursor &c, Buffer &b, Viewport &v, WINDOW *status, std::string 
 
 int main(int argc, char *argv[]){
 
+
   int ch;
   int povupdate;
   std::string pt;
@@ -403,7 +384,7 @@ int main(int argc, char *argv[]){
     return 1;
   }
 
-  init();
+  initall();
 
   define_key("\033[1;5A", KEY_CTRL_UP);
   define_key("\033[1;5B", KEY_CTRL_DOWN);
