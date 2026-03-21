@@ -37,10 +37,14 @@ gim filethatyouwantopen
 ```bash 
 .
 ├── a.out
-├── LICENSE
-├── main.cpp
+├── def
+│   └── def.hpp
 ├── installer.sh
+├── main.cpp
 ├── makefile
-└── README.md 
+└── struct
+    ├── Bufferstruct.hpp
+    ├── Cursorstruct.hpp
+    └── Viewportstruct.hpp
 
 ```
